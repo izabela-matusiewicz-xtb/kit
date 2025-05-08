@@ -71,6 +71,7 @@ class GoogleConfig:
     model: str = "gemini-1.5-pro-latest"
     temperature: Optional[float] = 0.7
     max_output_tokens: Optional[int] = 1000 # Corresponds to Gemini's max_output_tokens
+    model_kwargs: Optional[Dict[str, Any]] = field(default_factory=dict)
 
     def __post_init__(self):
         if not self.api_key:
@@ -336,11 +337,16 @@ class Summarizer:
                 if not genai_types:
                     raise LLMError("Google Gen AI SDK (google-genai) types not available. SDK might not be installed correctly.")
                 
-                generation_config_params = {}
+                generation_config_params: Dict[str, Any] = {}
                 if self.config.temperature is not None:
                     generation_config_params["temperature"] = self.config.temperature
                 if self.config.max_output_tokens is not None:
                     generation_config_params["max_output_tokens"] = self.config.max_output_tokens
+                
+                if self.config.model_kwargs:
+                    for k, v in self.config.model_kwargs.items():
+                        if k not in generation_config_params: # Prioritize explicitly set params
+                            generation_config_params[k] = v
 
                 response = client.models.generate_content(
                     model=self.config.model,
@@ -457,11 +463,16 @@ class Summarizer:
                 if not genai_types:
                     raise LLMError("Google Gen AI SDK (google-genai) types not available. SDK might not be installed correctly.")
                 
-                generation_config_params = {}
+                generation_config_params: Dict[str, Any] = {}
                 if self.config.temperature is not None:
                     generation_config_params["temperature"] = self.config.temperature
                 if self.config.max_output_tokens is not None:
                     generation_config_params["max_output_tokens"] = self.config.max_output_tokens
+                
+                if self.config.model_kwargs:
+                    for k, v in self.config.model_kwargs.items():
+                        if k not in generation_config_params: # Prioritize explicitly set params
+                            generation_config_params[k] = v
 
                 response = client.models.generate_content(
                     model=self.config.model,
@@ -577,11 +588,16 @@ class Summarizer:
                 if not genai_types:
                     raise LLMError("Google Gen AI SDK (google-genai) types not available. SDK might not be installed correctly.")
                 
-                generation_config_params = {}
+                generation_config_params: Dict[str, Any] = {}
                 if self.config.temperature is not None:
                     generation_config_params["temperature"] = self.config.temperature
                 if self.config.max_output_tokens is not None:
                     generation_config_params["max_output_tokens"] = self.config.max_output_tokens
+                
+                if self.config.model_kwargs:
+                    for k, v in self.config.model_kwargs.items():
+                        if k not in generation_config_params: # Prioritize explicitly set params
+                            generation_config_params[k] = v
 
                 response = client.models.generate_content(
                     model=self.config.model,
