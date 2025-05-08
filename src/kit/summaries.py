@@ -6,6 +6,9 @@ from typing import TYPE_CHECKING, Optional, Any, Union, Dict, List
 import logging
 import tiktoken
 
+# Define a type alias for LLM clients
+LLMClient = Any  # This could be openai.OpenAI, anthropic.Anthropic, genai.Client, or a custom client
+
 # Conditionally import google.genai
 try:
     import google.genai as genai
@@ -91,7 +94,7 @@ class Summarizer:
     _tokenizer_cache: Dict[str, Any] = {} # Cache for tiktoken encoders
     config: Optional[Union[OpenAIConfig, AnthropicConfig, GoogleConfig]]
     repo: 'Repository'
-    _llm_client: Optional[Any]
+    _llm_client: Optional[LLMClient]
 
     def _get_tokenizer(self, model_name: str):
         if model_name in self._tokenizer_cache:
