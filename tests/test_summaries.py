@@ -337,14 +337,14 @@ def test_summarize_file_google(mock_google_client_constructor, mock_repo, temp_c
     mock_repo.get_file_content.assert_called_once_with(abs_path)
     mock_google_client_constructor.assert_called_once_with(api_key="test_google_key")
 
-    expected_system_prompt = "You are an expert assistant skilled in creating concise code summaries for entire files."
-    expected_user_prompt = f"Summarize the following Python file named '{Path(temp_code_file).name}'. The file content is:\n\n```python\n{mock_file_content}\n```"
+    # The actual implementation uses this format for Google clients
+    expected_user_prompt = f"Summarize the following code from the file '{temp_code_file}'. Provide a high-level overview of its purpose, key components, and functionality. Focus on what the code does, not just how it's written. The code is:\n\n```\n{mock_file_content}\n```"
     
     expected_generation_params = {'temperature': 0.6, 'max_output_tokens': 110}
 
     mock_google_client_instance.models.generate_content.assert_called_once_with(
         model="gemini-file-test",
-        contents=f"{expected_system_prompt}\n\n{expected_user_prompt}",
+        contents=expected_user_prompt,
         generation_config=expected_generation_params
     )
 
