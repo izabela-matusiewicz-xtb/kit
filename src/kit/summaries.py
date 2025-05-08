@@ -656,8 +656,6 @@ class Summarizer:
                     )
                     summary = response.choices[0].message.content
                 except (AttributeError, TypeError) as e:
-                    # If that fails, the client might have a different interface
-                    # In a real implementation, you'd need more robust handling here
                     logger.warning(f"Custom LLM client doesn't support OpenAI-style interface: {e}")
                     raise LLMError(f"Custom LLM client without config doesn't support expected interface: {e}")
             elif isinstance(self.config, OpenAIConfig):
