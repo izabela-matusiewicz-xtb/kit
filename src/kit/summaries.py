@@ -88,6 +88,7 @@ class GoogleConfig:
             )
 
 
+# todo: make configurable
 MAX_CODE_LENGTH_CHARS = 50000  # Max characters for a single function/class summary
 MAX_FILE_SUMMARIZE_CHARS = 25000 # Max characters for file content in summarize_file
 OPENAI_MAX_PROMPT_TOKENS = 15000 # Max tokens for the prompt to OpenAI
@@ -98,7 +99,7 @@ class Summarizer:
     _tokenizer_cache: Dict[str, Any] = {} # Cache for tiktoken encoders
     config: Optional[Union[OpenAIConfig, AnthropicConfig, GoogleConfig]]
     repo: 'Repository'
-    _llm_client: Optional[Any]  # Using Any to avoid type errors with different client types
+    _llm_client: Optional[Any]  # type: ignore
 
     def _get_tokenizer(self, model_name: str):
         if model_name in self._tokenizer_cache:
