@@ -189,55 +189,57 @@ class Summarizer:
         Args:
             repo: The kit.Repository instance containing the code.
             config: LLM configuration (OpenAIConfig, AnthropicConfig, or GoogleConfig).
-                    If None, defaults to OpenAIConfig().
-            llm_client: Optional pre-configured LLM client (e.g., OpenAI, Anthropic client).
-                        If None, a client will be created based on the config.
+                    If None, defaults to OpenAIConfig.
+            llm_client: Optional pre-initialized LLM client. If None, client will be
+                        lazy-loaded on first use based on the config.
         """
         self.repo = repo
-        self.llm_client = llm_client # Store the provided client directly
-        self.config = config or OpenAIConfig()
-
-        # Ensure config has an API key if no external client is provided
-        if not isinstance(self.config, (OpenAIConfig, AnthropicConfig, GoogleConfig)):
+        if config is None:
+            self.config = OpenAIConfig()
+        elif not isinstance(config, (OpenAIConfig, AnthropicConfig, GoogleConfig)):
             raise TypeError(
-                "Unsupported LLM configuration type. "
-                "Expected OpenAIConfig, AnthropicConfig, or GoogleConfig."
+                "Unsupported LLM configuration. Expected OpenAIConfig, AnthropicConfig, or GoogleConfig."
             )
+        else:
+            self.config = config
+        
+        self.llm_client = llm_client # Initialize the public llm_client attribute
 
     def _get_llm_client(self):
         """Lazy loads the appropriate LLM client based on self.config."""
-        if self._llm_client is not None:
-            return self._llm_client
+        if self.llm_client is not None:
+            return self.llm_client
 
-        if isinstance(self.config, OpenAIConfig):
-            try:
-                from openai import OpenAI
-            except ImportError as e:
-                raise ImportError(
-                    "OpenAI client not found. Install with 'pip install kit[openai]' or 'pip install openai'"
-                ) from e
-            self._llm_client = OpenAI(api_key=self.config.api_key)
-        
-        elif isinstance(self.config, AnthropicConfig):
-            try:
-                from anthropic import Anthropic
-            except ImportError as e:
-                raise ImportError(
-                    "Anthropic client not found. Install with 'pip install kit[anthropic]' or 'pip install anthropic'"
-                ) from e
-            self._llm_client = Anthropic(api_key=self.config.api_key)
+        try:
+            if isinstance(self.config, OpenAIConfig):
+                from openai import OpenAI # Local import for OpenAI client
+                client = OpenAI(api_key=self.config.api_key)
+            elif isinstance(self.config, AnthropicConfig):
+                from anthropic import Anthropic # Local import for Anthropic client
+                client = Anthropic(api_key=self.config.api_key)
+            elif isinstance(self.config, GoogleConfig):
+                if genai is None:
+                    raise LLMError("Google Generative AI SDK (google-generativeai) is not installed. Please install it to use Google models.")
+                genai.configure(api_key=self.config.api_key)
+                client = genai.GenerativeModel(self.config.model)
+            else:
+                # This case should ideally be prevented by the __init__ type check,
+                # but as a safeguard:
+                raise LLMError(f"Unsupported LLM configuration type: {type(self.config)}")
             
-        elif isinstance(self.config, GoogleConfig):
-            if genai is None:
-                raise ImportError(
-                    "Google client not found. Install with 'pip install kit[google]' or 'pip install google-generativeai'"
-                )
-            genai.configure(api_key=self.config.api_key)
-            self._llm_client = genai.GenerativeModel(self.config.model) # Corrected instantiation
-        else:
-            raise TypeError(f"Unsupported LLM configuration: {type(self.config)}")
-            
-        return self._llm_client
+            self.llm_client = client
+            return self.llm_client
+        except ImportError as e:
+            sdk_name = ""
+            if "openai" in str(e).lower(): sdk_name = "openai"
+            elif "anthropic" in str(e).lower(): sdk_name = "anthropic"
+            # google-generativeai import is handled by genai being None
+            if sdk_name:
+                raise LLMError(f"The {sdk_name} SDK is not installed. Please install it to use {sdk_name.capitalize()} models.") from e
+            raise # Re-raise if it's a different import error
+        except Exception as e:
+            logger.error(f"Error initializing LLM client: {e}")
+            raise LLMError(f"Error initializing LLM client: {e}") from e
 
     def summarize_file(self, file_path: str) -> str:
         """
