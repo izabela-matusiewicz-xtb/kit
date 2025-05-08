@@ -337,21 +337,19 @@ class Summarizer:
                 if not genai_types:
                     raise LLMError("Google Gen AI SDK (google-genai) types not available. SDK might not be installed correctly.")
                 
-                generation_config_params: Dict[str, Any] = {}
+                generation_config_params: Dict[str, Any] = self.config.model_kwargs.copy() if self.config.model_kwargs is not None else {}
+
                 if self.config.temperature is not None:
                     generation_config_params["temperature"] = self.config.temperature
                 if self.config.max_output_tokens is not None:
                     generation_config_params["max_output_tokens"] = self.config.max_output_tokens
                 
-                if self.config.model_kwargs:
-                    for k, v in self.config.model_kwargs.items():
-                        if k not in generation_config_params: # Prioritize explicitly set params
-                            generation_config_params[k] = v
+                final_sdk_params = generation_config_params if generation_config_params else None
 
                 response = client.models.generate_content(
                     model=self.config.model,
                     contents=user_prompt_text,
-                    config=genai_types.GenerationConfig(**generation_config_params) 
+                    generation_config=final_sdk_params
                 )
                 # Check for blocked prompt first
                 if hasattr(response, 'prompt_feedback') and response.prompt_feedback and response.prompt_feedback.block_reason:
@@ -463,21 +461,19 @@ class Summarizer:
                 if not genai_types:
                     raise LLMError("Google Gen AI SDK (google-genai) types not available. SDK might not be installed correctly.")
                 
-                generation_config_params: Dict[str, Any] = {}
+                generation_config_params: Dict[str, Any] = self.config.model_kwargs.copy() if self.config.model_kwargs is not None else {}
+
                 if self.config.temperature is not None:
                     generation_config_params["temperature"] = self.config.temperature
                 if self.config.max_output_tokens is not None:
                     generation_config_params["max_output_tokens"] = self.config.max_output_tokens
                 
-                if self.config.model_kwargs:
-                    for k, v in self.config.model_kwargs.items():
-                        if k not in generation_config_params: # Prioritize explicitly set params
-                            generation_config_params[k] = v
+                final_sdk_params = generation_config_params if generation_config_params else None
 
                 response = client.models.generate_content(
                     model=self.config.model,
                     contents=user_prompt_text,
-                    config=genai_types.GenerationConfig(**generation_config_params) 
+                    generation_config=final_sdk_params
                 )
                 if hasattr(response, 'prompt_feedback') and response.prompt_feedback and response.prompt_feedback.block_reason:
                     logger.warning(f"Google LLM prompt for {function_name} in {file_path} blocked. Reason: {response.prompt_feedback.block_reason}")
@@ -588,21 +584,19 @@ class Summarizer:
                 if not genai_types:
                     raise LLMError("Google Gen AI SDK (google-genai) types not available. SDK might not be installed correctly.")
                 
-                generation_config_params: Dict[str, Any] = {}
+                generation_config_params: Dict[str, Any] = self.config.model_kwargs.copy() if self.config.model_kwargs is not None else {}
+
                 if self.config.temperature is not None:
                     generation_config_params["temperature"] = self.config.temperature
                 if self.config.max_output_tokens is not None:
                     generation_config_params["max_output_tokens"] = self.config.max_output_tokens
                 
-                if self.config.model_kwargs:
-                    for k, v in self.config.model_kwargs.items():
-                        if k not in generation_config_params: # Prioritize explicitly set params
-                            generation_config_params[k] = v
+                final_sdk_params = generation_config_params if generation_config_params else None
 
                 response = client.models.generate_content(
                     model=self.config.model,
                     contents=user_prompt_text,
-                    config=genai_types.GenerationConfig(**generation_config_params) 
+                    generation_config=final_sdk_params
                 )
                 if hasattr(response, 'prompt_feedback') and response.prompt_feedback and response.prompt_feedback.block_reason:
                     logger.warning(f"Google LLM prompt for {class_name} in {file_path} blocked. Reason: {response.prompt_feedback.block_reason}")
