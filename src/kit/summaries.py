@@ -2,12 +2,16 @@
 
 import os
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Optional, Any, Union, Dict, List
+from typing import TYPE_CHECKING, Optional, Any, Union, Dict, List, Protocol, runtime_checkable
 import logging
 import tiktoken
 
-# Define a type alias for LLM clients
-LLMClient = Any  # This could be openai.OpenAI, anthropic.Anthropic, genai.Client, or a custom client
+# Define a Protocol for LLM clients to help with type checking
+@runtime_checkable
+class LLMClientProtocol(Protocol):
+    """Protocol defining the interface for LLM clients."""
+    # This is a structural protocol - any object with compatible methods will be accepted
+    pass
 
 # Conditionally import google.genai
 try:
@@ -94,7 +98,7 @@ class Summarizer:
     _tokenizer_cache: Dict[str, Any] = {} # Cache for tiktoken encoders
     config: Optional[Union[OpenAIConfig, AnthropicConfig, GoogleConfig]]
     repo: 'Repository'
-    _llm_client: Optional[LLMClient]
+    _llm_client: Optional[Any]  # Using Any to avoid type errors with different client types
 
     def _get_tokenizer(self, model_name: str):
         if model_name in self._tokenizer_cache:
