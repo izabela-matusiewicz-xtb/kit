@@ -75,7 +75,7 @@ except Exception as e:
 ```
 
 <Aside type="note">
-  The first time you call `repo.get_summarizer()` (or instantiate `Summarizer` directly), it will attempt to import the necessary LLM library for the specified or default configuration (e.g., `openai`, `anthropic`, `google.generativeai`). If it's not installed, an `ImportError` will be raised, prompting you to install the required extras (e.g., `kit[openai]`, `kit[anthropic]`, `kit[google]`).
+  The first time you call `repo.get_summarizer()` (or instantiate `Summarizer` directly), it will attempt to import the necessary LLM library for the specified or default configuration (e.g., `openai`, `anthropic`, `google.genai`). If it's not installed, an `ImportError` will be raised, prompting you to install the required extras (e.g., `kit[openai]`, `kit[anthropic]`, `kit[google]`).
 </Aside>
 
 ### How it Works

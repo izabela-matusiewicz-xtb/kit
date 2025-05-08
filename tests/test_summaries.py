@@ -9,7 +9,8 @@ from kit.summaries import (
     AnthropicConfig,
     GoogleConfig,
     LLMError,
-    genai as kit_s_genai
+    genai as kit_s_genai,
+    genai_types as kit_s_genai_types
 )
 from kit.repository import Repository
 
@@ -33,13 +34,12 @@ if 'google' not in sys.modules:
     google_dummy = types.ModuleType('google')
     sys.modules['google'] = google_dummy
 
-if 'google.generativeai' not in sys.modules:
-    generativeai_dummy = types.ModuleType('generativeai')
-    generativeai_dummy.configure = MagicMock() # type: ignore[attr-defined]
-    generativeai_dummy.GenerativeModel = MagicMock() # type: ignore[attr-defined]
+if 'google.genai' not in sys.modules:
+    genai_dummy = types.ModuleType('genai')
+    genai_dummy.Client = MagicMock() # type: ignore[attr-defined]
+    sys.modules['google.genai'] = genai_dummy
     # Attach submodule to parent "google"
-    sys.modules['google'].generativeai = generativeai_dummy # type: ignore[attr-defined]
-    sys.modules['google.generativeai'] = generativeai_dummy
+    sys.modules['google'].genai = genai_dummy # type: ignore[attr-defined]
 
 # --- Fixtures ---
 
@@ -136,27 +136,28 @@ def test_get_llm_client_anthropic(mock_anthropic_constructor, mock_repo):
     mock_anthropic_constructor.assert_called_once() # Should not be called again
     assert client2 == client
 
-@patch('google.generativeai.configure', create=True)
-@patch('google.generativeai.GenerativeModel', create=True)
-def test_get_llm_client_google(mock_google_generativemodel_constructor, mock_google_configure, mock_repo):
+@patch('google.genai.Client', create=True) # New mock for google.genai.Client
+def test_get_llm_client_google(mock_google_client_constructor, mock_repo):
     """Test _get_llm_client returns and caches Google client."""
     if kit_s_genai is None:
-        pytest.skip("google.generativeai not available to kit.summaries")
+        pytest.skip("google.genai not available to kit.summaries")
+
     config = GoogleConfig(api_key="test_google_key", model="gemini-test")
     summarizer = Summarizer(repo=mock_repo, config=config)
-    mock_model_instance = MagicMock()
-    mock_google_generativemodel_constructor.return_value = mock_model_instance
+    
+    mock_client_instance = MagicMock()
+    mock_google_client_constructor.return_value = mock_client_instance
 
-    client = summarizer._get_llm_client()
-    mock_google_configure.assert_called_once_with(api_key="test_google_key")
-    mock_google_generativemodel_constructor.assert_called_once_with("gemini-test")
-    assert client == mock_model_instance
+    # First call: client should be created and cached
+    client1 = summarizer._get_llm_client()
+    assert client1 == mock_client_instance
+    mock_google_client_constructor.assert_called_once_with(api_key="test_google_key")
 
-    # Call again to check caching
+    # Second call: cached client should be returned
     client2 = summarizer._get_llm_client()
-    mock_google_configure.assert_called_once() # Should not be called again
-    mock_google_generativemodel_constructor.assert_called_once() # Should not be called again
-    assert client2 == client
+    assert client2 == mock_client_instance
+    mock_google_client_constructor.assert_called_once() # Still called only once
+
 
 # --- Test summarize_file ---
 
@@ -277,47 +278,45 @@ def test_summarize_file_anthropic(mock_anthropic_constructor, mock_repo, temp_co
 
     assert summary == "This is an Anthropic summary."
 
-@patch('google.generativeai.configure', create=True) # Mock Google SDK
-@patch('google.generativeai.GenerativeModel', create=True) # Mock Google SDK
-def test_summarize_file_google(mock_google_generativemodel_constructor, mock_google_configure, mock_repo, temp_code_file):
+@patch('google.genai.Client', create=True) # New mock
+def test_summarize_file_google(mock_google_client_constructor, mock_repo, temp_code_file):
     """Test summarize_file with GoogleConfig."""
     if kit_s_genai is None:
-        pytest.skip("google.generativeai not available to kit.summaries")
+        pytest.skip("google.genai not available to kit.summaries")
+
     mock_file_content = "# A simple Python script\nprint('Google AI is fun!')"
     mock_repo.get_file_content.return_value = mock_file_content # Mock repo method
 
-    mock_google_model_instance = MagicMock()
+    mock_google_client_instance = MagicMock()
     mock_response = MagicMock()
-    mock_response.text = "This is a Google summary."
-    mock_google_model_instance.generate_content.return_value = mock_response
-    mock_google_generativemodel_constructor.return_value = mock_google_model_instance
+    mock_response.text = "This is a Google file summary."
+    mock_response.prompt_feedback = None # Assume no blocking for this test
+    mock_google_client_instance.models.generate_content.return_value = mock_response
+    mock_google_client_constructor.return_value = mock_google_client_instance
 
-    config = GoogleConfig(api_key="test_google_key", model="gemini-pro-test", temperature=0.7, max_output_tokens=200)
+    config = GoogleConfig(api_key="test_google_key", model="gemini-file-test", temperature=0.6, max_output_tokens=110)
     summarizer = Summarizer(repo=mock_repo, config=config)
-
-    file_to_summarize = "sample_google_code.py"
-    summary = summarizer.summarize_file(file_to_summarize)
-
-    mock_repo.get_abs_path.assert_called_once_with(file_to_summarize)
-    mock_repo.get_file_content.assert_called_once_with(f"/abs/path/to/{file_to_summarize}")
-
-    expected_system_prompt = "You are an expert assistant skilled in creating concise and informative code summaries."
-    expected_user_prompt = f"Summarize the following code from the file '{file_to_summarize}'. Provide a high-level overview of its purpose, key components, and functionality. Focus on what the code does, not just how it's written. The code is:\n\n```\n{mock_file_content}\n```"
-    expected_full_prompt = f"{expected_system_prompt}\n\n{expected_user_prompt}"
-
-    mock_google_configure.assert_called_once_with(api_key="test_google_key")
-    mock_google_generativemodel_constructor.assert_called_once_with("gemini-pro-test")
     
-    mock_google_model_instance.generate_content.assert_called_once_with(
-        contents=[expected_full_prompt],
-        generation_config={
-            'temperature': 0.7,
-            'max_output_tokens': 200,
-            'candidate_count': 1
-        }
+    summary = summarizer.summarize_file(temp_code_file)
+
+    mock_repo.get_file_content.assert_called_once_with(temp_code_file)
+    mock_google_client_constructor.assert_called_once_with(api_key="test_google_key")
+
+    expected_system_prompt = "You are an expert assistant skilled in creating concise code summaries for entire files."
+    expected_user_prompt = f"Summarize the following code from the file '{temp_code_file}'. Focus on the overall purpose, primary functionalities, and key components defined within the file. The file content is:\n\n```\n{mock_file_content}\n```"
+    
+    expected_generation_config = kit_s_genai_types.GenerateContentConfig(
+        temperature=0.6,
+        max_output_tokens=110
     )
 
-    assert summary == "This is a Google summary."
+    mock_google_client_instance.models.generate_content.assert_called_once_with(
+        model="gemini-file-test",
+        contents=f"{expected_system_prompt}\n\n{expected_user_prompt}",
+        config=expected_generation_config
+    )
+
+    assert summary == "This is a Google file summary."
 
 # --- Test summarize_function ---
 
@@ -446,12 +445,12 @@ def test_summarize_function_anthropic(mock_anthropic_constructor, mock_repo):
 
     assert summary == "This is an Anthropic function summary."
 
-@patch('google.generativeai.configure', create=True) # Mock Google SDK
-@patch('google.generativeai.GenerativeModel', create=True) # Mock Google SDK
-def test_summarize_function_google(mock_google_generativemodel_constructor, mock_google_configure, mock_repo):
+@patch('google.genai.Client', create=True) # New mock
+def test_summarize_function_google(mock_google_client_constructor, mock_repo):
     """Test summarize_function with GoogleConfig."""
     if kit_s_genai is None:
-        pytest.skip("google.generativeai not available to kit.summaries")
+        pytest.skip("google.genai not available to kit.summaries")
+
     mock_func_code = "def calculate_sum(numbers: list[int]) -> int:\n    return sum(numbers)"
     mock_repo.extract_symbols.return_value = [{ 
         "name": "calculate_sum",
@@ -459,38 +458,39 @@ def test_summarize_function_google(mock_google_generativemodel_constructor, mock
         "code": mock_func_code
     }]
 
-    mock_google_model_instance = MagicMock()
+    mock_google_client_instance = MagicMock()
     mock_response = MagicMock()
     mock_response.text = "This is a Google function summary."
-    mock_google_model_instance.generate_content.return_value = mock_response
-    mock_google_generativemodel_constructor.return_value = mock_google_model_instance
+    mock_response.prompt_feedback = None
+    mock_google_client_instance.models.generate_content.return_value = mock_response
+    mock_google_client_constructor.return_value = mock_google_client_instance
 
-    config = GoogleConfig(api_key="test_google_key", model="gemini-func-test", temperature=0.6, max_output_tokens=120)
+    config = GoogleConfig(api_key="test_google_key", model="gemini-func-test", temperature=0.3, max_output_tokens=100)
     summarizer = Summarizer(repo=mock_repo, config=config)
 
-    file_path = "src/calculator.py"
-    func_name = "calculate_sum"
-    summary = summarizer.summarize_function(file_path, func_name)
+    file_path = "src/calculations.py"
+    function_name = "calculate_sum"
+    summary = summarizer.summarize_function(file_path, function_name)
 
     mock_repo.extract_symbols.assert_called_once_with(file_path)
+    mock_google_client_constructor.assert_called_once_with(api_key="test_google_key")
 
     expected_system_prompt = "You are an expert assistant skilled in creating concise code summaries for functions."
-    expected_user_prompt = f"Summarize the following function named '{func_name}' from the file '{file_path}'. Describe its purpose, parameters, and return value. The function code is:\n\n```\n{mock_func_code}\n```"
-    expected_full_prompt = f"{expected_system_prompt}\n\n{expected_user_prompt}"
+    expected_user_prompt = f"Summarize the following function named '{function_name}' from the file '{file_path}'. Describe its purpose, parameters, and return value. The function definition is:\n\n```\n{mock_func_code}\n```"
 
-    mock_google_configure.assert_called_once_with(api_key="test_google_key")
-    mock_google_generativemodel_constructor.assert_called_once_with("gemini-func-test")
-    
-    mock_google_model_instance.generate_content.assert_called_once_with(
-        contents=[expected_full_prompt],
-        generation_config={
-            'temperature': 0.6,
-            'max_output_tokens': 120,
-            'candidate_count': 1
-        }
+    expected_generation_config = kit_s_genai_types.GenerateContentConfig(
+        temperature=0.3,
+        max_output_tokens=100
+    )
+
+    mock_google_client_instance.models.generate_content.assert_called_once_with(
+        model="gemini-func-test",
+        contents=f"{expected_system_prompt}\n\n{expected_user_prompt}",
+        config=expected_generation_config
     )
 
     assert summary == "This is a Google function summary."
+
 
 # --- Test summarize_class ---
 
@@ -619,12 +619,11 @@ def test_summarize_class_anthropic(mock_anthropic_constructor, mock_repo):
 
     assert summary == "This is an Anthropic class summary."
 
-@patch('google.generativeai.configure', create=True) # Mock Google SDK
-@patch('google.generativeai.GenerativeModel', create=True) # Mock Google SDK
-def test_summarize_class_google(mock_google_generativemodel_constructor, mock_google_configure, mock_repo):
+@patch('google.genai.Client', create=True) # New mock
+def test_summarize_class_google(mock_google_client_constructor, mock_repo):
     """Test summarize_class with GoogleConfig."""
     if kit_s_genai is None:
-        pytest.skip("google.generativeai not available to kit.summaries")
+        pytest.skip("google.genai not available to kit.summaries")
     mock_class_code = "class Logger:\n    def __init__(self, level='INFO'):\n        self.level = level\n\n    def log(self, message):\n        print(f'[{self.level}] {message}')"
     mock_repo.extract_symbols.return_value = [{ 
         "name": "Logger",
@@ -632,11 +631,12 @@ def test_summarize_class_google(mock_google_generativemodel_constructor, mock_go
         "code": mock_class_code
     }]
 
-    mock_google_model_instance = MagicMock()
+    mock_google_client_instance = MagicMock()
     mock_response = MagicMock()
     mock_response.text = "This is a Google class summary."
-    mock_google_model_instance.generate_content.return_value = mock_response
-    mock_google_generativemodel_constructor.return_value = mock_google_model_instance
+    mock_response.prompt_feedback = None
+    mock_google_client_instance.models.generate_content.return_value = mock_response
+    mock_google_client_constructor.return_value = mock_google_client_instance
 
     config = GoogleConfig(api_key="test_google_key", model="gemini-class-test", temperature=0.5, max_output_tokens=130)
     summarizer = Summarizer(repo=mock_repo, config=config)
@@ -646,21 +646,20 @@ def test_summarize_class_google(mock_google_generativemodel_constructor, mock_go
     summary = summarizer.summarize_class(file_path, class_name)
 
     mock_repo.extract_symbols.assert_called_once_with(file_path)
+    mock_google_client_constructor.assert_called_once_with(api_key="test_google_key")
 
     expected_system_prompt = "You are an expert assistant skilled in creating concise code summaries for classes."
     expected_user_prompt = f"Summarize the following class named '{class_name}' from the file '{file_path}'. Describe its purpose, key attributes, and main methods. The class definition is:\n\n```\n{mock_class_code}\n```"
-    expected_full_prompt = f"{expected_system_prompt}\n\n{expected_user_prompt}"
-
-    mock_google_configure.assert_called_once_with(api_key="test_google_key")
-    mock_google_generativemodel_constructor.assert_called_once_with("gemini-class-test")
     
-    mock_google_model_instance.generate_content.assert_called_once_with(
-        contents=[expected_full_prompt],
-        generation_config={
-            'temperature': 0.5,
-            'max_output_tokens': 130,
-            'candidate_count': 1
-        }
+    expected_generation_config = kit_s_genai_types.GenerateContentConfig(
+        temperature=0.5,
+        max_output_tokens=130
+    )
+
+    mock_google_client_instance.models.generate_content.assert_called_once_with(
+        model="gemini-class-test",
+        contents=f"{expected_system_prompt}\n\n{expected_user_prompt}",
+        config=expected_generation_config
     )
 
     assert summary == "This is a Google class summary."

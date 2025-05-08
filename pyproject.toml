@@ -3,7 +3,7 @@ name = "kit"
 version = "0.1.0"
 description = "A modular toolkit for LLM-powered codebase understanding."
 authors = [
-    { name = "Your Name", email = "you@example.com" }
+    { name = "Cased", email = "ted@cased.com" }
 ]
 readme = "README.md"
 requires-python = ">=3.9"
@@ -17,7 +17,7 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/yourusername/kit"
+Homepage = "https://github.com/cased/kit"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
@@ -43,34 +43,34 @@ ignore_missing_imports = true
 vector = [
     "chromadb",
     "numpy>=1.25",
-    "sentence-transformers>=2.2.0"  # Added for embedding generation
+    "sentence-transformers>=2.2.0"
 ]
 api = [
-    "fastapi>=0.100",  # Using a recent version
-    "uvicorn[standard]>=0.20", # Includes standard dependencies like websockets
-    "typer>=0.9" # Removed invalid [all] extra
+    "fastapi>=0.100",  
+    "uvicorn[standard]>=0.20", 
+    "typer>=0.9"
 ]
 dev = [
     "mypy",
     "pytest",
-    "ruff", # Added ruff for linting
-    "black" # Added black for formatting
+    "ruff", 
+    "black" 
 ]
 openai = [
     "openai>=1.0.0"
 ]
 anthropic = [
-    "anthropic>=0.20.0" # Added Anthropic SDK
+    "anthropic>=0.20.0" 
 ]
 google = [
-    "google-generativeai>=0.3.0" # Added Google Generative AI SDK
+    "google-genai>=1.14.0"
 ]
 all = [
     "kit[openai]",
     "kit[anthropic]",
     "kit[google]",
     "kit[vector]",
-    "kit[api]" # Also including api for a complete 'all'
+    "kit[api]"
 ]
 
 [project.scripts]
