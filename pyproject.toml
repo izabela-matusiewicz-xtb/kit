@@ -14,6 +14,17 @@ dependencies = [
     "pytest>=8.3.5",
     "numpy>=1.25",
     "chromadb>=0.5.23",
+    "sentence-transformers>=2.2.0",
+    "fastapi>=0.100",
+    "uvicorn[standard]>=0.20",
+    "typer>=0.9",
+    "openai>=1.0.0",
+    "tiktoken>=0.4.0",
+    "anthropic>=0.20.0",
+    "google-genai>=1.14.0",
+    "mypy",
+    "ruff",
+    "black"
 ]
 
 [project.urls]
@@ -39,40 +50,7 @@ testpaths = [
 [tool.mypy]
 ignore_missing_imports = true
 
-[project.optional-dependencies]
-vector = [
-    "chromadb",
-    "numpy>=1.25",
-    "sentence-transformers>=2.2.0"
-]
-api = [
-    "fastapi>=0.100",  
-    "uvicorn[standard]>=0.20", 
-    "typer>=0.9"
-]
-dev = [
-    "mypy",
-    "pytest",
-    "ruff", 
-    "black" 
-]
-openai = [
-    "openai>=1.0.0",
-    "tiktoken>=0.4.0"
-]
-anthropic = [
-    "anthropic>=0.20.0" 
-]
-google = [
-    "google-genai>=1.14.0"
-]
-all = [
-    "cased-kit[openai]",
-    "cased-kit[anthropic]",
-    "cased-kit[google]",
-    "cased-kit[vector]",
-    "cased-kit[api]"
-]
+
 
 [project.scripts]
 kit = "kit.cli:app"
