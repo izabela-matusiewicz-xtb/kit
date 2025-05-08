@@ -6,11 +6,13 @@ from typing import TYPE_CHECKING, Optional, Any, Union, Dict, List
 import logging
 import tiktoken
 
-# Conditionally import google.generativeai
+# Conditionally import google.genai
 try:
-    import google.generativeai as genai
+    import google.genai as genai
+    from google.genai import types as genai_types
 except ImportError:
     genai = None # type: ignore
+    genai_types = None # type: ignore
 
 logger = logging.getLogger(__name__)
 
@@ -189,55 +191,58 @@ class Summarizer:
         Args:
             repo: The kit.Repository instance containing the code.
             config: LLM configuration (OpenAIConfig, AnthropicConfig, or GoogleConfig).
-                    If None, defaults to OpenAIConfig().
-            llm_client: Optional pre-configured LLM client (e.g., OpenAI, Anthropic client).
-                        If None, a client will be created based on the config.
+                    If None, defaults to OpenAIConfig.
+            llm_client: Optional pre-initialized LLM client. If None, client will be
+                        lazy-loaded on first use based on the config.
         """
         self.repo = repo
-        self.llm_client = llm_client # Store the provided client directly
-        self.config = config or OpenAIConfig()
-
-        # Ensure config has an API key if no external client is provided
-        if not isinstance(self.config, (OpenAIConfig, AnthropicConfig, GoogleConfig)):
+        if config is None:
+            self.config = OpenAIConfig()
+        elif not isinstance(config, (OpenAIConfig, AnthropicConfig, GoogleConfig)):
             raise TypeError(
-                "Unsupported LLM configuration type. "
-                "Expected OpenAIConfig, AnthropicConfig, or GoogleConfig."
+                "Unsupported LLM configuration. Expected OpenAIConfig, AnthropicConfig, or GoogleConfig."
             )
+        else:
+            self.config = config
+        
+        self.llm_client = llm_client # Initialize the public llm_client attribute
 
     def _get_llm_client(self):
         """Lazy loads the appropriate LLM client based on self.config."""
-        if self._llm_client is not None:
-            return self._llm_client
+        if self.llm_client is not None:
+            return self.llm_client
 
-        if isinstance(self.config, OpenAIConfig):
-            try:
-                from openai import OpenAI
-            except ImportError as e:
-                raise ImportError(
-                    "OpenAI client not found. Install with 'pip install kit[openai]' or 'pip install openai'"
-                ) from e
-            self._llm_client = OpenAI(api_key=self.config.api_key)
-        
-        elif isinstance(self.config, AnthropicConfig):
-            try:
-                from anthropic import Anthropic
-            except ImportError as e:
-                raise ImportError(
-                    "Anthropic client not found. Install with 'pip install kit[anthropic]' or 'pip install anthropic'"
-                ) from e
-            self._llm_client = Anthropic(api_key=self.config.api_key)
+        try:
+            if isinstance(self.config, OpenAIConfig):
+                from openai import OpenAI # Local import for OpenAI client
+                client = OpenAI(api_key=self.config.api_key)
+            elif isinstance(self.config, AnthropicConfig):
+                from anthropic import Anthropic # Local import for Anthropic client
+                client = Anthropic(api_key=self.config.api_key)
+            elif isinstance(self.config, GoogleConfig):
+                if genai is None or genai_types is None:
+                    raise LLMError("Google Gen AI SDK (google-genai) is not installed. Please install it to use Google models.")
+                # API key is picked up from GOOGLE_API_KEY env var by default if not passed to Client()
+                # However, we have it in self.config.api_key, so we pass it explicitly.
+                client = genai.Client(api_key=self.config.api_key)
+            else:
+                # This case should ideally be prevented by the __init__ type check,
+                # but as a safeguard:
+                raise LLMError(f"Unsupported LLM configuration type: {type(self.config)}")
             
-        elif isinstance(self.config, GoogleConfig):
-            if genai is None:
-                raise ImportError(
-                    "Google client not found. Install with 'pip install kit[google]' or 'pip install google-generativeai'"
-                )
-            genai.configure(api_key=self.config.api_key)
-            self._llm_client = genai.GenerativeModel(self.config.model) # Corrected instantiation
-        else:
-            raise TypeError(f"Unsupported LLM configuration: {type(self.config)}")
-            
-        return self._llm_client
+            self.llm_client = client
+            return self.llm_client
+        except ImportError as e:
+            sdk_name = ""
+            if "openai" in str(e).lower(): sdk_name = "openai"
+            elif "anthropic" in str(e).lower(): sdk_name = "anthropic"
+            # google-genai import is handled by genai being None
+            if sdk_name:
+                raise LLMError(f"The {sdk_name} SDK is not installed. Please install it to use {sdk_name.capitalize()} models.") from e
+            raise # Re-raise if it's a different import error
+        except Exception as e:
+            logger.error(f"Error initializing LLM client: {e}")
+            raise LLMError(f"Error initializing LLM client: {e}") from e
 
     def summarize_file(self, file_path: str) -> str:
         """
@@ -328,28 +333,30 @@ class Summarizer:
                 # Anthropic usage might be in response.usage (confirm API docs)
                 # Example: logger.debug(f"Anthropic API usage for {file_path}: {response.usage}")
             elif isinstance(self.config, GoogleConfig):
-                response = client.generate_content(
-                    user_prompt_text,
-                    generation_config=genai.types.GenerationConfig(
-                        candidate_count=1,
-                        temperature=self.config.temperature,
-                        max_output_tokens=self.config.max_output_tokens
-                    )
-                )
-                try:
-                    if response.prompt_feedback and response.prompt_feedback.block_reason:
-                        logger.warning(f"Google LLM prompt for {file_path} blocked. Reason: {response.prompt_feedback.block_reason}")
-                        summary = f"Summary generation failed: Prompt blocked by API (Reason: {response.prompt_feedback.block_reason})"
-                    elif not response.candidates:
-                        logger.warning(f"Google LLM returned no candidates for {file_path}.")
-                        summary = "Summary generation failed: No candidates returned by API."
-                    else:
-                        summary = response.candidates[0].content.parts[0].text
-                except (IndexError, AttributeError) as e_parse:
-                    logger.warning(f"Error parsing Google LLM response for {file_path}: {e_parse}. Response: {response}")
-                    summary = f"Summary generation failed: Error parsing API response."
-                # Google API doesn't typically return token counts in the same way by default in simple response.text
+                if not genai_types:
+                    raise LLMError("Google Gen AI SDK (google-genai) types not available. SDK might not be installed correctly.")
+                
+                generation_config_params = {}
+                if self.config.temperature is not None:
+                    generation_config_params["temperature"] = self.config.temperature
+                if self.config.max_output_tokens is not None:
+                    generation_config_params["max_output_tokens"] = self.config.max_output_tokens
 
+                response = client.models.generate_content(
+                    model=self.config.model,
+                    contents=user_prompt_text,
+                    config=genai_types.GenerateContentConfig(**generation_config_params) 
+                )
+                # Check for blocked prompt first
+                if hasattr(response, 'prompt_feedback') and response.prompt_feedback and response.prompt_feedback.block_reason:
+                    logger.warning(f"Google LLM prompt for file {file_path} blocked. Reason: {response.prompt_feedback.block_reason}")
+                    summary = f"Summary generation failed: Prompt blocked by API (Reason: {response.prompt_feedback.block_reason})"
+                elif not response.text:
+                    logger.warning(f"Google LLM returned no text for file {file_path}. Response: {response}")
+                    summary = "Summary generation failed: No text returned by API."
+                else:
+                    summary = response.text
+            
             if not summary or not summary.strip():
                 logger.warning(f"LLM returned an empty or whitespace-only summary for file {file_path}.")
                 raise LLMError(f"LLM returned an empty summary for file {file_path}.")
@@ -447,27 +454,29 @@ class Summarizer:
                 summary = response.content[0].text
                 # logger.debug(f"Anthropic API usage for {function_name} in {file_path}: {response.usage}")
             elif isinstance(self.config, GoogleConfig):
-                response = client.generate_content(
-                    user_prompt_text,
-                    generation_config=genai.types.GenerationConfig(
-                        candidate_count=1,
-                        temperature=self.config.temperature,
-                        max_output_tokens=self.config.max_output_tokens
-                    )
-                )
-                try:
-                    if response.prompt_feedback and response.prompt_feedback.block_reason:
-                        logger.warning(f"Google LLM prompt for {function_name} in {file_path} blocked. Reason: {response.prompt_feedback.block_reason}")
-                        summary = f"Summary generation failed: Prompt blocked by API (Reason: {response.prompt_feedback.block_reason})"
-                    elif not response.candidates:
-                        logger.warning(f"Google LLM returned no candidates for {function_name} in {file_path}.")
-                        summary = "Summary generation failed: No candidates returned by API."
-                    else:
-                        summary = response.candidates[0].content.parts[0].text
-                except (IndexError, AttributeError) as e_parse:
-                    logger.warning(f"Error parsing Google LLM response for {function_name} in {file_path}: {e_parse}. Response: {response}")
-                    summary = f"Summary generation failed: Error parsing API response."
+                if not genai_types:
+                    raise LLMError("Google Gen AI SDK (google-genai) types not available. SDK might not be installed correctly.")
+                
+                generation_config_params = {}
+                if self.config.temperature is not None:
+                    generation_config_params["temperature"] = self.config.temperature
+                if self.config.max_output_tokens is not None:
+                    generation_config_params["max_output_tokens"] = self.config.max_output_tokens
 
+                response = client.models.generate_content(
+                    model=self.config.model,
+                    contents=user_prompt_text,
+                    config=genai_types.GenerateContentConfig(**generation_config_params) 
+                )
+                if hasattr(response, 'prompt_feedback') and response.prompt_feedback and response.prompt_feedback.block_reason:
+                    logger.warning(f"Google LLM prompt for {function_name} in {file_path} blocked. Reason: {response.prompt_feedback.block_reason}")
+                    summary = f"Summary generation failed: Prompt blocked by API (Reason: {response.prompt_feedback.block_reason})"
+                elif not response.text:
+                    logger.warning(f"Google LLM returned no text for {function_name} in {file_path}. Response: {response}")
+                    summary = "Summary generation failed: No text returned by API."
+                else:
+                    summary = response.text
+            
             if not summary or not summary.strip():
                 logger.warning(f"LLM returned an empty or whitespace-only summary for function {function_name} in {file_path}.")
                 raise LLMError(f"LLM returned an empty summary for function {function_name}.")
@@ -565,26 +574,28 @@ class Summarizer:
                 summary = response.content[0].text
                 # logger.debug(f"Anthropic API usage for {class_name} in {file_path}: {response.usage}")
             elif isinstance(self.config, GoogleConfig):
-                response = client.generate_content(
-                    user_prompt_text,
-                    generation_config=genai.types.GenerationConfig(
-                        candidate_count=1,
-                        temperature=self.config.temperature,
-                        max_output_tokens=self.config.max_output_tokens # type: ignore
-                    )
+                if not genai_types:
+                    raise LLMError("Google Gen AI SDK (google-genai) types not available. SDK might not be installed correctly.")
+                
+                generation_config_params = {}
+                if self.config.temperature is not None:
+                    generation_config_params["temperature"] = self.config.temperature
+                if self.config.max_output_tokens is not None:
+                    generation_config_params["max_output_tokens"] = self.config.max_output_tokens
+
+                response = client.models.generate_content(
+                    model=self.config.model,
+                    contents=user_prompt_text,
+                    config=genai_types.GenerateContentConfig(**generation_config_params) 
                 )
-                try:
-                    if response.prompt_feedback and response.prompt_feedback.block_reason:
-                        logger.warning(f"Google LLM prompt for {class_name} in {file_path} blocked. Reason: {response.prompt_feedback.block_reason}")
-                        summary = f"Summary generation failed: Prompt blocked by API (Reason: {response.prompt_feedback.block_reason})"
-                    elif not response.candidates:
-                        logger.warning(f"Google LLM returned no candidates for {class_name} in {file_path}.")
-                        summary = "Summary generation failed: No candidates returned by API."
-                    else:
-                        summary = response.candidates[0].content.parts[0].text
-                except (IndexError, AttributeError) as e_parse:
-                    logger.warning(f"Error parsing Google LLM response for {class_name} in {file_path}: {e_parse}. Response: {response}")
-                    summary = f"Summary generation failed: Error parsing API response."
+                if hasattr(response, 'prompt_feedback') and response.prompt_feedback and response.prompt_feedback.block_reason:
+                    logger.warning(f"Google LLM prompt for {class_name} in {file_path} blocked. Reason: {response.prompt_feedback.block_reason}")
+                    summary = f"Summary generation failed: Prompt blocked by API (Reason: {response.prompt_feedback.block_reason})"
+                elif not response.text:
+                    logger.warning(f"Google LLM returned no text for {class_name} in {file_path}. Response: {response}")
+                    summary = "Summary generation failed: No text returned by API."
+                else:
+                    summary = response.text
             
             if not summary or not summary.strip():
                 logger.warning(f"LLM returned an empty or whitespace-only summary for class {class_name} in {file_path}.")

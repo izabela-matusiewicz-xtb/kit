@@ -8,9 +8,10 @@ fed straight into a chat completion.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Sequence
+from typing import Any, Dict, List, Optional, Sequence, TYPE_CHECKING
 
-from .repository import Repository
+if TYPE_CHECKING:
+    from .repository import Repository
 
 
 class ContextAssembler:
