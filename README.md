@@ -9,6 +9,21 @@ Use `kit` to build things like code reviewers, code generators, even IDEs, all e
 
 ## Quick Installation
 
+### Install from PyPI
+
+```bash
+# Basic installation
+pip install cased-kit
+
+# With OpenAI support
+pip install cased-kit[openai]
+
+# With all features (OpenAI, Anthropic, Google, vector search, API)
+pip install cased-kit[all]
+```
+
+### Install from Source
+
 ```bash
 git clone https://github.com/cased/kit.git
 cd kit
@@ -20,13 +35,13 @@ uv pip install -e .
 ## Basic Usage
 
 ```python
-import kit
+from kit import Repository
 
 # Load a local repository
-repo = kit.Repository("/path/to/your/local/codebase")
+repo = Repository("/path/to/your/local/codebase")
 
 # Load a remote public GitHub repo
-# repo = kit.Repository("https://github.com/owner/repo")
+# repo = Repository("https://github.com/owner/repo")
 
 # Explore the repo
 print(repo.get_file_tree())
