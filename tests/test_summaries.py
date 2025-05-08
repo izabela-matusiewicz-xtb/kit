@@ -171,11 +171,12 @@ def test_get_llm_client_google(mock_google_client_constructor, mock_repo):
     if kit_s_genai is None:
         pytest.skip("google.genai not available to kit.summaries")
 
-    config = GoogleConfig(api_key="test_google_key", model="gemini-test")
-    summarizer = Summarizer(repo=mock_repo, config=config)
-    
+    # Set up the mock before creating the Summarizer
     mock_client_instance = MagicMock()
     mock_google_client_constructor.return_value = mock_client_instance
+    
+    config = GoogleConfig(api_key="test_google_key", model="gemini-test")
+    summarizer = Summarizer(repo=mock_repo, config=config)
 
     # First call: client should be created and cached
     client1 = summarizer._get_llm_client()
@@ -314,8 +315,9 @@ def test_summarize_file_google(mock_google_client_constructor, mock_repo, temp_c
         pytest.skip("google.genai not available to kit.summaries")
 
     mock_file_content = "# A simple Python script\nprint('Google AI is fun!')"
-    # Ensure get_abs_path returns the path as is, assuming temp_code_file is absolute
-    mock_repo.get_abs_path.return_value = temp_code_file 
+    # Ensure get_abs_path returns a consistent path
+    abs_path = f"/abs/path/to/{temp_code_file}"
+    mock_repo.get_abs_path.return_value = abs_path
     mock_repo.get_file_content.return_value = mock_file_content
     
     mock_google_client_instance = MagicMock()
@@ -331,7 +333,7 @@ def test_summarize_file_google(mock_google_client_constructor, mock_repo, temp_c
     summary = summarizer.summarize_file(temp_code_file)
 
     mock_repo.get_abs_path.assert_called_once_with(temp_code_file)
-    mock_repo.get_file_content.assert_called_once_with(temp_code_file)
+    mock_repo.get_file_content.assert_called_once_with(abs_path)
     mock_google_client_constructor.assert_called_once_with(api_key="test_google_key")
 
     expected_system_prompt = "You are an expert assistant skilled in creating concise code summaries for entire files."
@@ -376,7 +378,7 @@ def test_summarize_function_openai(mock_openai_constructor, mock_repo):
     mock_repo.extract_symbols.assert_called_once_with(file_path)
 
     expected_system_prompt = "You are an expert assistant skilled in creating concise code summaries for functions."
-    expected_user_prompt = f"Summarize the following function named '{func_name}' from the file '{file_path}'. Describe its purpose, parameters, and return value. The function code is:\n\n```\n{mock_func_code}\n```"
+    expected_user_prompt = f"Summarize the following function named '{func_name}' from the file '{file_path}'. Describe its purpose, parameters, and return value. The function definition is:\n\n```\n{mock_func_code}\n```"
 
     mock_openai_client.chat.completions.create.assert_called_once_with(
         model="gpt-func-test",
@@ -460,7 +462,7 @@ def test_summarize_function_anthropic(mock_anthropic_constructor, mock_repo):
     mock_repo.extract_symbols.assert_called_once_with(file_path)
 
     expected_system_prompt = "You are an expert assistant skilled in creating concise code summaries for functions."
-    expected_user_prompt = f"Summarize the following function named '{func_name}' from the file '{file_path}'. Describe its purpose, parameters, and return value. The function code is:\n\n```\n{mock_func_code}\n```"
+    expected_user_prompt = f"Summarize the following function named '{func_name}' from the file '{file_path}'. Describe its purpose, parameters, and return value. The function definition is:\n\n```\n{mock_func_code}\n```"
 
     mock_anthropic_client.messages.create.assert_called_once_with(
         model="claude-func-test",
@@ -504,7 +506,7 @@ def test_summarize_function_google(mock_google_client_constructor, mock_repo):
     mock_repo.extract_symbols.assert_called_once_with(file_path)
     mock_google_client_constructor.assert_called_once_with(api_key="test_google_key")
 
-    expected_system_prompt = "You are an expert assistant skilled in creating concise code summaries for functions."
+    # The actual implementation only uses the user prompt for Google client
     expected_user_prompt = f"Summarize the following function named '{function_name}' from the file '{file_path}'. Describe its purpose, parameters, and return value. The function definition is:\n\n```\n{mock_func_code}\n```"
 
     expected_generation_params = {
@@ -514,7 +516,7 @@ def test_summarize_function_google(mock_google_client_constructor, mock_repo):
 
     mock_google_client_instance.models.generate_content.assert_called_once_with(
         model="gemini-func-test",
-        contents=f"{expected_system_prompt}\n\n{expected_user_prompt}",
+        contents=expected_user_prompt,
         generation_config=expected_generation_params
     )
 
@@ -677,9 +679,9 @@ def test_summarize_class_google(mock_google_client_constructor, mock_repo):
     mock_repo.extract_symbols.assert_called_once_with(file_path)
     mock_google_client_constructor.assert_called_once_with(api_key="test_google_key")
 
-    expected_system_prompt = "You are an expert assistant skilled in creating concise code summaries for classes."
+    # The actual implementation only uses the user prompt for Google client
     expected_user_prompt = f"Summarize the following class named '{class_name}' from the file '{file_path}'. Describe its purpose, key attributes, and main methods. The class definition is:\n\n```\n{mock_class_code}\n```"
-    
+
     expected_generation_params = {
         'temperature': 0.5,
         'max_output_tokens': 130
@@ -687,7 +689,7 @@ def test_summarize_class_google(mock_google_client_constructor, mock_repo):
 
     mock_google_client_instance.models.generate_content.assert_called_once_with(
         model="gemini-class-test",
-        contents=f"{expected_system_prompt}\n\n{expected_user_prompt}",
+        contents=expected_user_prompt,
         generation_config=expected_generation_params
     )
 

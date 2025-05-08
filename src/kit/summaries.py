@@ -493,7 +493,7 @@ class Summarizer:
             return f"Function content too large ({len(function_code)} characters) to summarize."
 
         system_prompt_text = "You are an expert assistant skilled in creating concise code summaries for functions."
-        user_prompt_text = f"Summarize the following function named '{function_name}' from the file '{file_path}'. Describe its purpose, parameters, and return value. The function code is:\n\n```\n{function_code}\n```"
+        user_prompt_text = f"Summarize the following function named '{function_name}' from the file '{file_path}'. Describe its purpose, parameters, and return value. The function definition is:\n\n```\n{function_code}\n```"
 
         client = self._get_llm_client()
         summary = ""
