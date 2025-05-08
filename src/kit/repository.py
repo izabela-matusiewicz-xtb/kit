@@ -4,6 +4,7 @@ from .repo_mapper import RepoMapper
 from .code_searcher import CodeSearcher
 from .context_extractor import ContextExtractor
 from .vector_searcher import VectorSearcher
+from .llm_context import ContextAssembler
 import os
 import tempfile
 import subprocess
@@ -97,7 +98,7 @@ class Repository:
         Returns:
             List[Dict[str, Any]]: A list of dictionaries representing the extracted symbols.
         """
-        return self.mapper.extract_symbols(file_path)
+        return self.mapper.extract_symbols(file_path)  # type: ignore[arg-type]
 
     def search_text(self, query: str, file_pattern: str = "*") -> List[Dict[str, Any]]:
         """
@@ -241,8 +242,6 @@ class Repository:
 
     def get_context_assembler(self) -> 'ContextAssembler':
         """Return a ContextAssembler bound to this repository."""
-        from .llm_context import ContextAssembler  # local import to keep dependencies light
-
         return ContextAssembler(self)
 
     def find_symbol_usages(self, symbol_name: str, symbol_type: Optional[str] = None) -> List[Dict[str, Any]]:

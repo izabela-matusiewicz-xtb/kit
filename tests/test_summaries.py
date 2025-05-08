@@ -21,12 +21,12 @@ import types
 # ---------------------------------------------------------
 if 'openai' not in sys.modules:
     openai_dummy = types.ModuleType('openai')
-    openai_dummy.OpenAI = MagicMock()
+    openai_dummy.OpenAI = MagicMock() # type: ignore[attr-defined]
     sys.modules['openai'] = openai_dummy
 
 if 'anthropic' not in sys.modules:
     anthropic_dummy = types.ModuleType('anthropic')
-    anthropic_dummy.Anthropic = MagicMock()
+    anthropic_dummy.Anthropic = MagicMock() # type: ignore[attr-defined]
     sys.modules['anthropic'] = anthropic_dummy
 
 if 'google' not in sys.modules:
@@ -35,10 +35,10 @@ if 'google' not in sys.modules:
 
 if 'google.generativeai' not in sys.modules:
     generativeai_dummy = types.ModuleType('generativeai')
-    generativeai_dummy.configure = MagicMock()
-    generativeai_dummy.GenerativeModel = MagicMock()
+    generativeai_dummy.configure = MagicMock() # type: ignore[attr-defined]
+    generativeai_dummy.GenerativeModel = MagicMock() # type: ignore[attr-defined]
     # Attach submodule to parent "google"
-    sys.modules['google'].generativeai = generativeai_dummy
+    sys.modules['google'].generativeai = generativeai_dummy # type: ignore[attr-defined]
     sys.modules['google.generativeai'] = generativeai_dummy
 
 # --- Fixtures ---

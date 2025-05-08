@@ -189,7 +189,11 @@ class DocstringIndexer:
             os.makedirs(self.persist_dir, exist_ok=True)
             
         # Updated backend instantiation: explicitly pass path and a clearer collection_name
-        self.backend: VectorDBBackend = backend or ChromaDBBackend(path=self.persist_dir, collection_name="kit_docstring_index")
+        str_persist_dir = str(self.persist_dir)
+        self.backend: VectorDBBackend = backend or ChromaDBBackend(
+            persist_dir=str_persist_dir,
+            collection_name="kit_docstring_index"
+        )
 
     def build(self, force: bool = False, level: str = "symbol", file_extensions: Optional[List[str]] = None) -> None:
         """(Re)build the docstring index.

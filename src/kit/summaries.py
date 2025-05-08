@@ -86,6 +86,9 @@ class Summarizer:
     """Provides methods to summarize code using a configured LLM."""
 
     _tokenizer_cache: Dict[str, Any] = {} # Cache for tiktoken encoders
+    config: Union[OpenAIConfig, AnthropicConfig, GoogleConfig]
+    repo: 'Repository'
+    llm_client: Optional[Any]
 
     def _get_tokenizer(self, model_name: str):
         if model_name in self._tokenizer_cache:
@@ -186,19 +189,15 @@ class Summarizer:
         Args:
             repo: The kit.Repository instance containing the code.
             config: LLM configuration (OpenAIConfig, AnthropicConfig, or GoogleConfig).
-                    Defaults to OpenAIConfig loading from environment variables if None.
-            llm_client: Optional pre-configured/mock client for testing.
+                    If None, defaults to OpenAIConfig().
+            llm_client: Optional pre-configured LLM client (e.g., OpenAI, Anthropic client).
+                        If None, a client will be created based on the config.
         """
         self.repo = repo
-        
-        if config is None:
-            # Default to OpenAI if no config is provided.
-            self.config = OpenAIConfig()
-        else:
-            self.config = config
-            
-        self._llm_client = llm_client # Allow injecting a pre-configured/mock client
+        self.llm_client = llm_client # Store the provided client directly
+        self.config = config or OpenAIConfig()
 
+        # Ensure config has an API key if no external client is provided
         if not isinstance(self.config, (OpenAIConfig, AnthropicConfig, GoogleConfig)):
             raise TypeError(
                 "Unsupported LLM configuration type. "
