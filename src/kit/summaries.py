@@ -282,13 +282,13 @@ class Summarizer:
                 client = OpenAI(api_key=self.config.api_key)
             elif isinstance(self.config, AnthropicConfig):
                 from anthropic import Anthropic # Local import for Anthropic client
-                client = Anthropic(api_key=self.config.api_key)
+                client = Anthropic(api_key=self.config.api_key)  # type: ignore # Different client type
             elif isinstance(self.config, GoogleConfig):
                 if genai is None or genai_types is None:
                     raise LLMError("Google Gen AI SDK (google-genai) is not installed. Please install it to use Google models.")
                 # API key is picked up from GOOGLE_API_KEY env var by default if not passed to Client()
                 # However, we have it in self.config.api_key, so we pass it explicitly.
-                client = genai.Client(api_key=self.config.api_key)
+                client = genai.Client(api_key=self.config.api_key)  # type: ignore # Different client type
             else:
                 # This case should ideally be prevented by the __init__ type check,
                 # but as a safeguard:
