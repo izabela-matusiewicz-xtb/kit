@@ -25,7 +25,7 @@ if [ ! -f "${PYPROJECT_TOML}" ]; then
 fi
 
 # 2. Check if version in pyproject.toml matches the provided version
-PYPROJECT_VERSION=$(grep -E "^version\s*=\s*\"" ${PYPROJECT_TOML} | sed -E 's/version\s*=\s*"([^"]*)".*/\1/')
+PYPROJECT_VERSION=$(sed -n 's/^version[[:space:]]*=[[:space:]]*\"\([^"]*\)\".*/\1/p' "${PYPROJECT_TOML}")
 
 if [ "${PYPROJECT_VERSION}" != "${VERSION}" ]; then
     echo "Error: Version mismatch!"
