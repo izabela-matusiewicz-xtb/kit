@@ -11,23 +11,12 @@ In addition to the non-LLM based functions of the `Repository` class,
 
 To use code summarization, you'll need an LLM provider configured. Currently, OpenAI, Anthropic, and Google Cloud's Generative AI models are supported.
 
-1.  **Install Extra Dependencies:**
-    Choose the provider(s) you want to use:
+1.  **Install Dependencies:**
     ```bash
     # Ensure you are in your project's virtual environment
-    
-    # For OpenAI
-    uv pip install kit[openai]
-    
-    # For Anthropic
-    uv pip install kit[anthropic]
-    
-    # For Google
-    uv pip install kit[google]
-    
-    # To install SDKs for all supported LLM providers
-    uv pip install kit[all]
+    uv pip install cased-kit
     ```
+    The installation includes all dependencies for OpenAI, Anthropic, and Google Cloud's Generative AI models.
 
 2.  **Set API Key(s):** Configure the API key(s) for your chosen provider(s) as environment variables:
     ```bash
@@ -67,15 +56,15 @@ try:
 
     print(f"Summary for {file_path}:\n{summary}")
 
-except ImportError:
-    print("Summarization requires OpenAI. Please install it: pip install kit[openai]")
+except Exception as e:
+    print(f"An error occurred with the LLM provider: {e}")
 except Exception as e:
     print(f"An error occurred: {e}")
 
 ```
 
 <Aside type="note">
-  The first time you call `repo.get_summarizer()` (or instantiate `Summarizer` directly), it will attempt to import the necessary LLM library for the specified or default configuration (e.g., `openai`, `anthropic`, `google.genai`). If it's not installed, an `ImportError` will be raised, prompting you to install the required extras (e.g., `kit[openai]`, `kit[anthropic]`, `kit[google]`).
+  When you call `repo.get_summarizer()` (or instantiate `Summarizer` directly), it will use the appropriate LLM library based on the specified configuration (e.g., `openai`, `anthropic`, `google.genai`). All necessary libraries are included in the standard installation.
 </Aside>
 
 ### How it Works

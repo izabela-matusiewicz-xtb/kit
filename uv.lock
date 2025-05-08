@@ -198,84 +198,44 @@ name = "cased-kit"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "anthropic" },
+    { name = "black" },
     { name = "chromadb" },
+    { name = "fastapi" },
+    { name = "google-genai" },
+    { name = "mypy" },
     { name = "numpy", version = "2.0.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
     { name = "numpy", version = "2.2.5", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
+    { name = "openai" },
     { name = "pathspec" },
     { name = "pytest" },
-    { name = "tree-sitter-language-pack" },
-]
-
-[package.optional-dependencies]
-all = [
-    { name = "anthropic" },
-    { name = "chromadb" },
-    { name = "fastapi" },
-    { name = "google-genai" },
-    { name = "numpy", version = "2.0.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
-    { name = "numpy", version = "2.2.5", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
-    { name = "openai" },
-    { name = "sentence-transformers" },
-    { name = "tiktoken" },
-    { name = "typer" },
-    { name = "uvicorn", version = "0.33.0", source = { registry = "https://pypi.org/simple" }, extra = ["standard"], marker = "python_full_version < '3.13'" },
-    { name = "uvicorn", version = "0.34.2", source = { registry = "https://pypi.org/simple" }, extra = ["standard"], marker = "python_full_version >= '3.13'" },
-]
-anthropic = [
-    { name = "anthropic" },
-]
-api = [
-    { name = "fastapi" },
-    { name = "typer" },
-    { name = "uvicorn", version = "0.33.0", source = { registry = "https://pypi.org/simple" }, extra = ["standard"], marker = "python_full_version < '3.13'" },
-    { name = "uvicorn", version = "0.34.2", source = { registry = "https://pypi.org/simple" }, extra = ["standard"], marker = "python_full_version >= '3.13'" },
-]
-dev = [
-    { name = "black" },
-    { name = "mypy" },
-    { name = "pytest" },
     { name = "ruff" },
-]
-google = [
-    { name = "google-genai" },
-]
-openai = [
-    { name = "openai" },
-    { name = "tiktoken" },
-]
-vector = [
-    { name = "chromadb" },
-    { name = "numpy", version = "2.0.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.10'" },
-    { name = "numpy", version = "2.2.5", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.10'" },
     { name = "sentence-transformers" },
+    { name = "tiktoken" },
+    { name = "tree-sitter-language-pack" },
+    { name = "typer" },
+    { name = "uvicorn", version = "0.33.0", source = { registry = "https://pypi.org/simple" }, extra = ["standard"], marker = "python_full_version < '3.13'" },
+    { name = "uvicorn", version = "0.34.2", source = { registry = "https://pypi.org/simple" }, extra = ["standard"], marker = "python_full_version >= '3.13'" },
 ]
 
 [package.metadata]
 requires-dist = [
-    { name = "anthropic", marker = "extra == 'anthropic'", specifier = ">=0.20.0" },
-    { name = "black", marker = "extra == 'dev'" },
-    { name = "cased-kit", extras = ["anthropic"], marker = "extra == 'all'" },
-    { name = "cased-kit", extras = ["api"], marker = "extra == 'all'" },
-    { name = "cased-kit", extras = ["google"], marker = "extra == 'all'" },
-    { name = "cased-kit", extras = ["openai"], marker = "extra == 'all'" },
-    { name = "cased-kit", extras = ["vector"], marker = "extra == 'all'" },
+    { name = "anthropic", specifier = ">=0.20.0" },
+    { name = "black" },
     { name = "chromadb", specifier = ">=0.5.23" },
-    { name = "chromadb", marker = "extra == 'vector'" },
-    { name = "fastapi", marker = "extra == 'api'", specifier = ">=0.100" },
-    { name = "google-genai", marker = "extra == 'google'", specifier = ">=1.14.0" },
-    { name = "mypy", marker = "extra == 'dev'" },
+    { name = "fastapi", specifier = ">=0.100" },
+    { name = "google-genai", specifier = ">=1.14.0" },
+    { name = "mypy" },
     { name = "numpy", specifier = ">=1.25" },
-    { name = "numpy", marker = "extra == 'vector'", specifier = ">=1.25" },
-    { name = "openai", marker = "extra == 'openai'", specifier = ">=1.0.0" },
+    { name = "openai", specifier = ">=1.0.0" },
     { name = "pathspec", specifier = ">=0.11.1" },
     { name = "pytest", specifier = ">=8.3.5" },
-    { name = "pytest", marker = "extra == 'dev'" },
-    { name = "ruff", marker = "extra == 'dev'" },
-    { name = "sentence-transformers", marker = "extra == 'vector'", specifier = ">=2.2.0" },
-    { name = "tiktoken", marker = "extra == 'openai'", specifier = ">=0.4.0" },
+    { name = "ruff" },
+    { name = "sentence-transformers", specifier = ">=2.2.0" },
+    { name = "tiktoken", specifier = ">=0.4.0" },
     { name = "tree-sitter-language-pack", specifier = ">=0.7.2" },
-    { name = "typer", marker = "extra == 'api'", specifier = ">=0.9" },
-    { name = "uvicorn", extras = ["standard"], marker = "extra == 'api'", specifier = ">=0.20" },
+    { name = "typer", specifier = ">=0.9" },
+    { name = "uvicorn", extras = ["standard"], specifier = ">=0.20" },
 ]
 
 [[package]]

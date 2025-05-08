@@ -12,14 +12,8 @@ Use `kit` to build things like code reviewers, code generators, even IDEs, all e
 ### Install from PyPI
 
 ```bash
-# Basic installation
+# Installation (includes all features)
 pip install cased-kit
-
-# With OpenAI support
-pip install cased-kit[openai]
-
-# With all features (OpenAI, Anthropic, Google, vector search, API)
-pip install cased-kit[all]
 ```
 
 ### Install from Source
