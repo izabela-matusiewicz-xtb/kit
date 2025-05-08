@@ -1,5 +1,5 @@
 import time
-from kit import Repo
+from kit.repository import Repository as Repo
 
 def main():
     import argparse

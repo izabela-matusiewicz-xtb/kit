@@ -13,7 +13,7 @@ class VectorDBBackend:
     """
     Abstract vector DB interface for pluggable backends.
     """
-    def add(self, embeddings: List[List[float]], metadatas: List[Dict[str, Any]]):
+    def add(self, embeddings: List[List[float]], metadatas: List[Dict[str, Any]], ids: Optional[List[str]] = None):
         raise NotImplementedError
 
     def query(self, embedding: List[float], top_k: int) -> List[Dict[str, Any]]:
@@ -30,14 +30,17 @@ class VectorDBBackend:
         raise NotImplementedError
 
 class ChromaDBBackend(VectorDBBackend):
-    def __init__(self, persist_dir: str):
+    def __init__(self, persist_dir: str, collection_name: Optional[str] = None):
         if chromadb is None:
             raise ImportError("chromadb is not installed. Run 'pip install chromadb'.")
         self.persist_dir = persist_dir
         self.client = chromadb.Client(Settings(persist_directory=persist_dir))
-        # Use a collection name scoped to persist_dir to avoid dimension clashes across multiple tests/processes
-        coll_name = f"kit_code_chunks_{abs(hash(persist_dir))}"
-        self.collection = self.client.get_or_create_collection(coll_name)
+        
+        final_collection_name = collection_name
+        if final_collection_name is None:
+            # Use a collection name scoped to persist_dir to avoid dimension clashes across multiple tests/processes
+            final_collection_name = f"kit_code_chunks_{abs(hash(persist_dir))}"
+        self.collection = self.client.get_or_create_collection(final_collection_name)
 
     def add(self, embeddings, metadatas, ids: Optional[List[str]] = None):
         # Skip adding if there is nothing to add (prevents ChromaDB error)
@@ -52,7 +55,7 @@ class ChromaDBBackend(VectorDBBackend):
                 # Attempt to delete all existing documents. This is a common pattern for a full refresh.
                 # Chroma's API for deleting all can be tricky; using a non-empty ID match is a workaround.
                 # If a more direct `clear()` or `delete_all()` method becomes available, prefer that.
-                self.collection.delete(where={"source": {"$ne": "impossible_source_value_to_match_all"}})
+                self.collection.delete(where={"source": {"$ne": "impossible_source_value_to_match_all"}}) # type: ignore[dict-item]
                 # Or, if you know a common metadata key, like 'file_path' from previous version:
                 # self.collection.delete(where={"file_path": {"$ne": "impossible_file_path"}})
             except Exception as e:
