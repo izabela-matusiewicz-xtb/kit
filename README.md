@@ -36,23 +36,29 @@ print(repo.extract_symbols('src/main.py'))
 # Output: [{"name": "main", "type": "function", "file": "src/main.py", ...}, ...]
 ```
 
-## Core API
+## Key Features & Capabilities
 
-The `kit.Repository` class provides several core methods:
+`kit` empowers you to deeply understand and interact with codebases, providing the core components to build your own AI-powered developer tools. Here are just a few of the things you can do:
 
-*   `get_file_tree()`: Lists files and directories.
-*   `extract_symbols(filepath=None)`: Extracts functions, classes, etc., from a file or the whole repo.
-*   `search_text(query)`: Performs text/regex search across the codebase.
-*   `chunk_file_by_lines(filepath, max_lines)`: Splits a file into line-based chunks.
-*   `chunk_file_by_symbols(filepath)`: Splits a file into symbol-based chunks.
-*   `extract_context_around_line(filepath, line_number)`: Gets the surrounding code block (function/class) for a specific line.
-*   `find_symbol_usages(symbol_name, symbol_type=None)`: Finds definitions and references of a symbol across the repo.
+*   **Explore Code Structure:**
+    *   Get a bird's-eye view with `repo.get_file_tree()` to list all files and directories.
+    *   Dive into specifics with `repo.extract_symbols()` to identify all functions, classes, and other code constructs, either across the entire repository or within a single file.
 
-*See the [Full Documentation](docs/src/content/docs/index.mdx) for detailed usage and examples.*
+*   **Pinpoint Information:**
+    *   Perform precise textual or regular expression searches across your codebase using `repo.search_text()`.
+    *   Track down every definition and reference of a specific symbol (like a function or class) with `repo.find_symbol_usages()`.
 
-## Dive Deeper
+*   **Prepare Code for LLMs & Analysis:**
+    *   Break down large files into manageable pieces for LLM context windows using `repo.chunk_file_by_lines()` or `repo.chunk_file_by_symbols()`.
+    *   Instantly grab the full definition of a function or class just by knowing a line number within it using `repo.extract_context_around_line()`.
 
-For detailed guides, tutorials, API reference, and core concepts, please see the **[Full Documentation](docs/src/content/docs/index.mdx)**.
+*   **Generate Code Summaries (Alpha):**
+    *   Leverage LLMs to create natural language summaries for files, functions, or classes using the `Summarizer` (e.g., `summarizer.summarize_file()`, `summarizer.summarize_function()`).
+    *   Build a searchable semantic index of these AI-generated docstrings with `DocstringIndexer` and query it with `SummarySearcher` to find code based on intent and meaning.
+
+*   **And much more...** `kit` also offers capabilities for semantic search on raw code, building custom context for LLMs, and more.
+
+Explore the **[Full Documentation](https://kit.cased.com)** for detailed usage, advanced features, and practical examples.
 
 ## License
 

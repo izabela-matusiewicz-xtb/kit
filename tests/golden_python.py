@@ -1,5 +1,3 @@
-# /Users/tnm/kit/tests/golden_python.py
-
 import asyncio # Need this for the async function example
 
 def top_level_function(arg1, arg2):
