@@ -24,7 +24,7 @@ jobs:
           # Activate the virtual environment
           source .venv/bin/activate
           # Install runtime and dev dependencies from pyproject.toml
-          uv pip install -e .[dev]
+          uv pip install -e .[dev,all]
       - name: Lint and Type Check
         run: |
           # Activate the virtual environment
