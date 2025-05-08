@@ -345,7 +345,7 @@ class Summarizer:
                 response = client.models.generate_content(
                     model=self.config.model,
                     contents=user_prompt_text,
-                    config=genai_types.GenerateContentConfig(**generation_config_params) 
+                    config=genai_types.GenerationConfig(**generation_config_params) 
                 )
                 # Check for blocked prompt first
                 if hasattr(response, 'prompt_feedback') and response.prompt_feedback and response.prompt_feedback.block_reason:
@@ -466,7 +466,7 @@ class Summarizer:
                 response = client.models.generate_content(
                     model=self.config.model,
                     contents=user_prompt_text,
-                    config=genai_types.GenerateContentConfig(**generation_config_params) 
+                    config=genai_types.GenerationConfig(**generation_config_params) 
                 )
                 if hasattr(response, 'prompt_feedback') and response.prompt_feedback and response.prompt_feedback.block_reason:
                     logger.warning(f"Google LLM prompt for {function_name} in {file_path} blocked. Reason: {response.prompt_feedback.block_reason}")
@@ -586,7 +586,7 @@ class Summarizer:
                 response = client.models.generate_content(
                     model=self.config.model,
                     contents=user_prompt_text,
-                    config=genai_types.GenerateContentConfig(**generation_config_params) 
+                    config=genai_types.GenerationConfig(**generation_config_params) 
                 )
                 if hasattr(response, 'prompt_feedback') and response.prompt_feedback and response.prompt_feedback.block_reason:
                     logger.warning(f"Google LLM prompt for {class_name} in {file_path} blocked. Reason: {response.prompt_feedback.block_reason}")

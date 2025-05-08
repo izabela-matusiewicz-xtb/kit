@@ -235,9 +235,9 @@ class Repository:
              raise NotImplementedError(
                  f"Unsupported configuration type: {type(llm_config)}. Supported types are OpenAIConfig, AnthropicConfig, GoogleConfig."
              )
-
-        # Return the initialized Summarizer
-        return Summarizer(repo=self, config=llm_config)
+        else:
+            # Return the initialized Summarizer
+            return Summarizer(repo=self, config=llm_config)
 
 
     def get_context_assembler(self) -> 'ContextAssembler':
