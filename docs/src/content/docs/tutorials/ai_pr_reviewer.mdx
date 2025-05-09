@@ -119,10 +119,25 @@ patch = PatchSet(diff)
 # Add the raw diff
 assembler.add_diff(diff)
 
-# Add full content of changed / added files
+# Add full content of changed / added files – with safety guards
+LOCK_FILES = {
+    "package-lock.json",
+    "yarn.lock",
+    "pnpm-lock.yaml",
+    "poetry.lock",
+    "Cargo.lock",
+    "composer.lock",
+}
+
 for p_file in patch:
-    if not p_file.is_removed_file:
-        assembler.add_file(p_file.path)
+    if p_file.is_removed_file:
+        continue  # nothing to embed
+
+    assembler.add_file(
+        p_file.path,
+        max_lines=400,              # Inline only if the file is reasonably small
+        skip_if_name_in=LOCK_FILES, # Skip bulky lock files entirely (diff already added)
+    )
 
 # Semantic search for related code using PR title/description
 for q in filter(None, [pr_title, pr_description]):
