@@ -20,7 +20,7 @@ To start, our AI reviewer needs the raw materials of the pull request. We'll use
 *   The **diff**: This contains the actual line-by-line changes proposed in the PR. It's the primary subject of the review.
 *   The PR-head **commit SHA**: This is a unique identifier for the specific version of the code that the PR branch represents. `kit` will use this SHA to load and analyze the codebase exactly as it appears in the PR, ensuring our review is based on the correct snapshot of the files.
 
-Use the GitHub REST API to grab the *diff* **and** the PR-head **commit SHA** (we’ll need that to load files as they exist in the PR):
+Use the GitHub REST API to grab the *diff* **and** the PR-head **commit SHA** (we'll need that to load files as they exist in the PR):
 
 ```python
 import os, requests
@@ -48,9 +48,15 @@ With the `head_sha` obtained, we can now leverage `kit.Repository` to access the
 ```python
 from kit import Repository
 
+# For this tutorial, we assume the remote repository's default branch 
+# reflects the PR's base or that a local clone is already checked out 
+# to the correct PR head commit (head_sha).
+# kit.Repository, when given a URL, currently clones the default branch.
+# Supporting checkout of a specific ref (like head_sha) directly via Repository 
+# initialization is forthcoming.
+
 repo = Repository(
-    path_or_url="https://github.com/OWNER/REPO.git",
-    ref=head_sha,               # commit taken from step 1
+    path_or_url="https://github.com/OWNER/REPO.git", # Replace with actual repo URL
     github_token=os.getenv("GITHUB_TOKEN"),
     cache_dir="~/.cache/kit",  # clones are cached for speed
 )
@@ -81,19 +87,22 @@ assembler = repo.get_context_assembler()
 patch = PatchSet(diff)
 changed_files_paths = [pf.path for pf in patch]
 
-assembler.add_diff(diff, changed_files_paths)
-assembler.add_changed_files_full_content(diff, changed_files_paths)
+# Add the raw diff
+assembler.add_diff(diff)
 
-for path in changed_files_paths:
-    assembler.add_neighboring_symbols(path, max_neighbors=5)
-    # assembler.add_symbol_dependencies(path, max_depth=1)  # This method was removed as it relied on get_call_graph
+# Add full content of files that were added or modified
+# For deleted files, their content won't be in the head_sha, so get_file_content would fail.
+# For simplicity, this tutorial will only add content for existing files in the PR head.
+for p_file in patch: # Iterate through PatchedFile objects from unidiff
+    if not p_file.is_removed_file: # Only add content for new or modified files
+        assembler.add_file(p_file.path) 
 
 # Optional but powerful: semantic search for related code using PR title/description.
 # This leverages `repo.search_semantic()`. For the most insightful results, 
 # this method can be backed by a `DocstringIndexer` that uses AI-generated summaries, 
 # enabling matches based on conceptual similarity rather than just keyword overlap.
 # Ensure your `Repository` instance is configured with an appropriate embedding function
-# and (ideally) a pre-built `DocstringIndexer`. 
+# and (ideally) a `DocstringIndexer`. 
 # See the "[Docstring Search](/tutorials/docstring_search)" and "[Semantic Code Search](/tutorials/semantic_code_search)" tutorials for setup details.
 
 # Example (ensure pr_title and pr_description are available strings from your PR data):
@@ -107,7 +116,7 @@ for original_query in queries_for_semantic_search:
         # Add a descriptive label for the LLM to understand the source of these results
         assembler.add_search_results(
             search_hits, 
-            query_description=f"Code semantically related to: '{original_query}'"
+            query=f"Code semantically related to: '{original_query}'"
         )
 
 context_blob = assembler.format_context()
@@ -115,10 +124,9 @@ context_blob = assembler.format_context()
 
 The `ContextAssembler` is used as follows:
 
-1.  **`assembler.add_diff(diff, changed_files_paths)`**: This provides the LLM with the direct changes from the PR.
-2.  **`assembler.add_changed_files_full_content(diff, changed_files_paths)`**: Supplying the full content of changed files allows the LLM to see modifications in their complete original context, not just the diff hunks.
-3.  **`assembler.add_neighboring_symbols(path, max_neighbors=5)`**: For each changed file, this method intelligently fetches the source code of symbols (functions, classes) that are defined immediately before or after the changed lines, or that contain the changed lines. This provides local context, helping the LLM understand the immediate surroundings of a modification.
-4.  **Augment with Semantic Search (`assembler.add_search_results(...)`)**: This is a key step where `kit` truly empowers the AI reviewer. Beyond direct code connections, `kit`'s `repo.search_semantic()` method can unearth other code sections that are *conceptually related* to the PR's intent, even if not directly linked by calls or imports.
+1.  **`assembler.add_diff(diff)`**: This provides the LLM with the direct changes from the PR.
+2.  **`assembler.add_file(p_file.path)`**: Supplying the full content of changed files allows the LLM to see modifications in their complete original context, not just the diff hunks.
+3.  **Augment with Semantic Search (`assembler.add_search_results(...)`)**: This is a key step where `kit` truly empowers the AI reviewer. Beyond direct code connections, `kit`'s `repo.search_semantic()` method can unearth other code sections that are *conceptually related* to the PR's intent, even if not directly linked by calls or imports.
 
     You can use queries derived from the PR's title or description to find examples of similar functionality, relevant design patterns, or areas that might require parallel updates.
 
@@ -168,7 +176,7 @@ requests.post(
 
 This tutorial provides a foundational AI PR reviewer. `kit`'s components can help you extend it further:
 
-*   **Chunk large diffs**: If a PR is very large, use `assembler.add_diff(..., chunk_by_file=True)` or other `ContextAssembler` strategies to manage context size effectively.
+*   **Chunk large diffs or files**: If a PR is very large, the `ContextAssembler` currently adds full content. You might need strategies to chunk very large files (e.g., using `repo.chunk_file_by_symbols` or `repo.chunk_file_by_lines`) or diffs before adding them to the assembler, or implement more granular context addition to stay within LLM limits.
 *   **Custom ranking**: The `ContextAssembler` could be configured or extended to allow different weights for various context pieces (e.g., prioritizing semantic search matches that are highly relevant over less critical dependency information). `kit`'s search results, which often include scores, can inform this process.
 *   **Inline comments**: To provide more granular feedback, parse the LLM's output to identify suggestions pertaining to specific files and lines. `kit`'s symbol information (which includes line numbers from `RepoMapper`) is crucial for accurately mapping these suggestions back to the codebase and using the GitHub *review* API to post comments directly on the diff.
 *   **Supersonic**: For more advanced automation, tools like Supersonic could leverage `kit`'s understanding and context to not just suggest, but also *automatically apply* LLM-suggested changes, potentially opening follow-up PRs. This might involve `kit.Repository`'s file access methods and (in the future) more advanced code manipulation primitives.
