@@ -88,7 +88,6 @@ from kit.summaries import OpenAIConfig, AnthropicConfig, GoogleConfig
 # Load repo
 repo = kit.Repository("/path/to/your/project")
 
-# --- OpenAI Example --- 
 # Define custom OpenAI configuration
 openai_custom_config = OpenAIConfig(
     api_key="sk-...", # Can be omitted if OPENAI_API_KEY is set
@@ -99,6 +98,7 @@ openai_summarizer = repo.get_summarizer(config=openai_custom_config)
 # Summarize using the custom OpenAI configuration
 openai_summary = openai_summarizer.summarize_file("src/utils_openai.py")
 print(f"OpenAI Summary:\n{openai_summary}")
+```
 
 #### Using OpenAI-Compatible Endpoints (e.g., OpenRouter)
 
@@ -120,27 +120,20 @@ openrouter_config = OpenAIConfig(
 openrouter_summarizer = repo.get_summarizer(config=openrouter_config)
 ```
 
-# --- Anthropic Example --- 
+#### Additional Configs
+
 # Define custom Anthropic configuration
 anthropic_config = AnthropicConfig(
     api_key="sk-ant-...", # Can be omitted if ANTHROPIC_API_KEY is set
     model="claude-3-haiku-20240307"
 )
-# Get summarizer with specific Anthropic config
-anthropic_summarizer = repo.get_summarizer(config=anthropic_config)
-anthropic_summary = anthropic_summarizer.summarize_file("src/utils_anthropic.py")
-# print(f"Anthropic Summary:\n{anthropic_summary}")
 
-# --- Google Example --- 
 # Define custom Google configuration
 google_config = GoogleConfig(
     api_key="AIzaSy...", # Can be omitted if GOOGLE_API_KEY is set
     model="gemini-1.5-flash-latest"
 )
-# Get summarizer with specific Google config
-google_summarizer = repo.get_summarizer(config=google_config)
-google_summary = google_summarizer.summarize_file("src/utils_google.py")
-print(f"Google Summary:\n{google_summary}")
+
 ```
 
 ## Advanced Usage

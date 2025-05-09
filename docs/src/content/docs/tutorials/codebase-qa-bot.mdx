@@ -30,40 +30,43 @@ This approach is powerful because it combines semantic understanding (from summa
 
     ```python
     from kit import Repository, DocstringIndexer, Summarizer, SummarySearcher, ContextAssembler
-    from kit.llms.openai import OpenAIConfig # Or AnthropicConfig, GoogleConfig
+    from kit.summaries import OpenAIConfig 
 
     # --- Configuration ---
     REPO_PATH = "/path/to/your/local/git/repo" #! MODIFY
-    INDEX_DB_PATH = "./my_code_qa_index.db" # vector database path
+    # For DocstringIndexer, persist_dir is where the DB is stored.
+    # Let's use a directory for ChromaDB as it might create multiple files.
+    INDEX_PERSIST_DIR = "./my_code_qa_index_db/" 
 
     # Use a specific summarizer model for indexing, can be different from Q&A LLM
     INDEXER_LLM_CONFIG = OpenAIConfig(model="gpt-4o")
 
     # LLM for answering the question based on context
     QA_LLM_CONFIG = OpenAIConfig(model="gpt-4o") # Or your preferred model
-    MAX_CONTEXT_CHARS = 12000 # For ContextAssembler
-    TOP_K_SUMMARIES = 3 # How many file summaries to retrieve
+    # MAX_CONTEXT_CHARS is not directly used by ContextAssembler in this simplified flow
+    # TOP_K_SUMMARIES = 3 remains relevant for SummarySearcher
+    TOP_K_SUMMARIES = 3 
     # --- END Configuration ---
 
     repo = Repository(REPO_PATH)
 
-    # For DocstringIndexer
-    summarizer_for_indexing = Summarizer(config=INDEXER_LLM_CONFIG)
-    indexer = DocstringIndexer(repo, summarizer_for_indexing, db_path=INDEX_DB_PATH)
+    # For DocstringIndexer - requires repo and a summarizer instance
+    summarizer_for_indexing = Summarizer(repo=repo, config=INDEXER_LLM_CONFIG) 
+    indexer = DocstringIndexer(repo, summarizer_for_indexing, persist_dir=INDEX_PERSIST_DIR)
 
-    # For SummarySearcher
-    searcher = SummarySearcher(repo, db_path=INDEX_DB_PATH)
+    # For SummarySearcher - get it from the indexer
+    searcher = indexer.get_searcher()
 
     # For assembling context for the Q&A LLM
-    assembler = ContextAssembler(repo) # Using default max_chars, etc.
+    assembler = ContextAssembler(repo)
 
     # We'll need an LLM client to ask the final question
-    # (Using Summarizer as a convenient way to get a configured client)
-    qa_llm_client = Summarizer(config=QA_LLM_CONFIG)._get_llm_client()
+    qa_llm_client = Summarizer(repo=repo, config=QA_LLM_CONFIG)._get_llm_client()
     print("Components initialized.")
     ```
 
     Make sure to replace `"/path/to/your/local/git/repo"` with the actual path to your repository.
+    Also ensure the directory for `INDEX_PERSIST_DIR` (e.g., `my_code_qa_index_db/`) can be created.
 
 2.  **Build or Load the Index**
 
@@ -72,13 +75,15 @@ This approach is powerful because it combines semantic understanding (from summa
     ```python
     import os
 
-    if not os.path.exists(INDEX_DB_PATH):
-        print(f"Index not found at {INDEX_DB_PATH}. Building...")
+    # Check based on persist_dir for the indexer
+    if not os.path.exists(INDEX_PERSIST_DIR) or not any(os.scandir(INDEX_PERSIST_DIR)):
+        print(f"Index not found or empty at {INDEX_PERSIST_DIR}. Building...")
         # Build a symbol-level index for more granular results
+        # force=True will rebuild if the directory exists but is perhaps from an old run
         indexer.build(level="symbol", file_extensions=[".py", ".js", ".md"], force=True)
         print("Symbol-level index built successfully.")
     else:
-        print(f"Found existing index at {INDEX_DB_PATH}.")
+        print(f"Found existing index at {INDEX_PERSIST_DIR}.")
     ```
 
 3.  **Define the Question-Answering Function**
@@ -87,69 +92,53 @@ This approach is powerful because it combines semantic understanding (from summa
 
     ```python
     def answer_question(user_query: str) -> str:
-        print(f"\nSearching for files relevant to: '{user_query}'")
-        # 1. Search for relevant file summaries
-        #    search_results format: [{'file_path': str, 'summary': str, 'score': float}, ...]
+        print(f"\nSearching for files/symbols relevant to: '{user_query}'")
+        # 1. Search for relevant file/symbol summaries
         search_results = searcher.search(user_query, top_k=TOP_K_SUMMARIES)
 
         if not search_results:
-            return "I couldn't find any relevant files in the codebase to answer your question."
+            return "I couldn't find any relevant files or symbols in the codebase to answer your question."
 
         print(f"Found {len(search_results)} relevant document summaries.")
+        # Reset assembler for each new question to start with fresh context
+        current_question_assembler = ContextAssembler(repo)
+
+        # 2. Add relevant context to the assembler
+        added_content_identifiers = set() # To avoid adding the same file multiple times if symbols from it are retrieved
+
         for i, res in enumerate(search_results):
+            file_path = res.get('file_path')
+            identifier_for_log = file_path
+            
             if res.get('level') == 'symbol':
-                print(f"  {i+1}. Symbol: {res.get('symbol_name')} in {res['file_path']} (Type: {res.get('symbol_type')}, Score: {res['score']:.4f})")
-            else:
-                print(f"  {i+1}. File: {res['file_path']} (Score: {res['score']:.4f})")
+                symbol_name = res.get('symbol_name', 'Unknown Symbol')
+                symbol_type = res.get('symbol_type', 'Unknown Type')
+                identifier_for_log = f"Symbol: {symbol_name} in {file_path} (Type: {symbol_type})"
+            
+            print(f"  {i+1}. {identifier_for_log} (Score: {res.get('score', 0.0):.4f})")
 
-        # 2. Get code for these top results to build context
-        #    ContextAssembler expects chunks like [{'code': str, 'file_path': str}, ...]
-        context_chunks = []
-        for res in search_results:
-            try:
-                code_content = ""
-                chunk_identifier = ""
-                if res.get('level') == 'symbol':
-                    target_node_path = res.get('symbol_name') # This is the node_path from index metadata
-                    file_path_for_symbols = res['file_path']
-                    if target_node_path:
-                        all_symbols_in_file = repo.extract_symbols(file_path_for_symbols)
-                        found_symbol_code = None
-                        for sym_info in all_symbols_in_file:
-                            if sym_info.get('node_path') == target_node_path:
-                                found_symbol_code = sym_info.get('code')
-                                break
-                        if found_symbol_code:
-                            code_content = found_symbol_code
-                        else:
-                            print(f"Warning: Could not retrieve code for symbol via node_path '{target_node_path}' in {file_path_for_symbols}")
-                            continue # Skip to next search result
-                        chunk_identifier = f"{file_path_for_symbols}::{target_node_path}"
-                    else:
-                        print(f"Warning: Symbol level result missing 'symbol_name' (node_path): {res}")
-                        continue # Skip to next search result
-                else: # Default to file level
-                    code_content = repo.get_file_content(res['file_path'])
-                    chunk_identifier = res['file_path']
-                
-                if not code_content.strip():
-                    print(f"Warning: No content retrieved for {chunk_identifier}, skipping.")
-                    continue
-
-                context_chunks.append({
-                    "code": code_content,
-                    "identifier": chunk_identifier
-                })
-            except FileNotFoundError: # Still relevant for get_file_content or if extract_symbols fails to find file
-                print(f"Warning: File not found when trying to retrieve content for {res['file_path']}")
+            # For simplicity, add the full file content for any relevant file found,
+            # whether the hit was file-level or symbol-level.
+            # A more advanced version could add specific symbol code using a custom method.
+            if file_path and file_path not in added_content_identifiers:
+                try:
+                    # Add full file content for context
+                    current_question_assembler.add_file(file_path)
+                    added_content_identifiers.add(file_path)
+                    print(f"    Added content of {file_path} to context.")
+                except FileNotFoundError:
+                    print(f"    Warning: File {file_path} not found when trying to add to context.")
+                except Exception as e:
+                    print(f"    Warning: Error adding {file_path} to context: {e}")
         
-        if not context_chunks:
-             return "Found relevant file names, but could not retrieve their content."
+        if not added_content_identifiers:
+             return "Found relevant file/symbol names, but could not retrieve their content for context."
 
-        # 3. Assemble the context for the LLM
-        #    Here, we use the simpler from_chunks method. The ContextAssembler class has
-        #    more granular methods (add_file, add_diff) if you need more control.
-        prompt_context = assembler.from_chunks(context_chunks, max_chars=MAX_CONTEXT_CHARS)
+        # 3. Get the assembled context string
+        prompt_context = current_question_assembler.format_context()
+        
+        if not prompt_context.strip():
+            return "Could not assemble any context for the LLM based on search results."
 
         # 4. Formulate the prompt and ask the LLM
         system_message = (
@@ -196,9 +185,9 @@ This approach is powerful because it combines semantic understanding (from summa
 
     ```text title="Example Output (will vary based on your repo & LLM)"
     Components initialized.
-    Found existing index at ./my_code_qa_index.db.
+    Found existing index at ./my_code_qa_index_db/.
 
-    Searching for files relevant to: 'How does the authentication middleware handle expired JWTs?'
+    Searching for files/symbols relevant to: 'How does the authentication middleware handle expired JWTs?'
     Found 3 relevant document summaries.
       1. Symbol: authenticate in src/auth/middleware.py (Type: function, Score: 0.8765)
       2. File: src/utils/jwt_helpers.py (Score: 0.7912)
