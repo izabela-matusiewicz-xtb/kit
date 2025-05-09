@@ -25,7 +25,6 @@ from pydantic import BaseModel, Field, ValidationError
 
 from ..repository import Repository
 from ..vector_searcher import VectorSearcher
-from ..dependency_analyzer import DependencyAnalyzer
 from ..docstring_indexer import DocstringIndexer
 from ..summaries import Summarizer
 from ..tree_sitter_symbol_extractor import TreeSitterSymbolExtractor
@@ -88,12 +87,6 @@ class SemanticSearchParams(BaseModel):
     repo_id: str
     query: str
     limit: Optional[int] = 10
-
-
-class AnalyzeDependenciesParams(BaseModel):
-    repo_id: str
-    file_path: Optional[str] = None
-    depth: Optional[int] = 1
 
 
 class GetDocumentationParams(BaseModel):
@@ -190,8 +183,6 @@ class KitServerLogic:
                 if not embed_fn:
                     raise MCPError(code=INVALID_PARAMS, message="embed_fn is required for vector_searcher")
                 self._analyzers[repo_id][analyzer_name] = VectorSearcher(repo, embed_fn=embed_fn)
-            elif analyzer_name == "dependency_analyzer":
-                self._analyzers[repo_id][analyzer_name] = DependencyAnalyzer(repo)
             elif analyzer_name == "docstring_indexer":
                 self._analyzers[repo_id][analyzer_name] = DocstringIndexer(repo)
             elif analyzer_name == "code_summarizer":
@@ -211,12 +202,6 @@ class KitServerLogic:
         if analyzer is None:
             raise MCPError(code=INTERNAL_ERROR, message="Vector search not available")
         return analyzer.search(query, limit=limit)
-
-    def analyze_dependencies(
-        self, repo_id: str, file_path: Optional[str], depth: Optional[int]
-    ) -> Any:
-        analyzer = self.get_analyzer(repo_id, "dependency_analyzer")
-        return analyzer.analyze(file_path=file_path, depth=depth)
 
     def get_documentation(
         self, repo_id: str, symbol_name: Optional[str], file_path: Optional[str]
@@ -265,7 +250,6 @@ class KitServerLogic:
         Tool(name="find_symbol_usages", description="Find all usages of a symbol", inputSchema=FindSymbolUsagesParams.model_json_schema()),
         Tool(name="get_file_tree", description="Get the repository file structure", inputSchema=GetFileTreeParams.model_json_schema()),
         Tool(name="semantic_search", description="Search code using semantic similarity", inputSchema=SemanticSearchParams.model_json_schema()),
-        Tool(name="analyze_dependencies", description="Analyze code dependencies", inputSchema=AnalyzeDependenciesParams.model_json_schema()),
         Tool(name="get_documentation", description="Get documentation and docstrings", inputSchema=GetDocumentationParams.model_json_schema()),
         Tool(name="get_code_summary", description="Get a summary of code for a given file. If symbol_name is provided, also attempts to summarize it as a function and class.", inputSchema=GetCodeSummaryParams.model_json_schema()),
     ]
@@ -332,15 +316,6 @@ class KitServerLogic:
             ],
         ),
         Prompt(
-            name="analyze_dependencies",
-            description="Analyze code dependencies",
-            arguments=[
-                PromptArgument(name="repo_id", description="ID of the repository", required=True),
-                PromptArgument(name="file_path", description="Optional path to a specific file", required=False),
-                PromptArgument(name="depth", description="Optional dependency depth", required=False),
-            ],
-        ),
-        Prompt(
             name="get_documentation",
             description="Extract docstrings or documentation from code",
             arguments=[
@@ -395,9 +370,6 @@ class KitServerLogic:
                 case "semantic_search":
                     results = self.semantic_search(arguments["repo_id"], arguments["query"], arguments.get("limit", 10))
                     return GetPromptResult(description="Semantic search results", messages=[PromptMessage(role="user", content=TextContent(type="text", text=json.dumps(results, indent=2)))])
-                case "analyze_dependencies":
-                    deps = self.analyze_dependencies(arguments["repo_id"], arguments.get("file_path"), arguments.get("depth"))
-                    return GetPromptResult(description="Dependencies", messages=[PromptMessage(role="user", content=TextContent(type="text", text=json.dumps(deps, indent=2)))])
                 case "get_documentation":
                     docs = self.get_documentation(arguments["repo_id"], arguments.get("symbol_name"), arguments.get("file_path"))
                     return GetPromptResult(description="Documentation", messages=[PromptMessage(role="user", content=TextContent(type="text", text=json.dumps(docs, indent=2)))])
@@ -450,12 +422,6 @@ async def serve() -> None:
                 args = SemanticSearchParams(**arguments)
                 results = logic.semantic_search(args.repo_id, args.query, args.limit)
                 return [TextContent(type="text", text=json.dumps(results, indent=2))]
-            elif name == "analyze_dependencies":
-                args = AnalyzeDependenciesParams(**arguments)
-                deps = logic.analyze_dependencies(
-                    args.repo_id, args.file_path, args.depth
-                )
-                return [TextContent(type="text", text=json.dumps(deps, indent=2))]
             elif name == "get_documentation":
                 args = GetDocumentationParams(**arguments)
                 docs = logic.get_documentation(
