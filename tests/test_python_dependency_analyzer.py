@@ -7,7 +7,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from kit import Repository
-from kit.dependency_analyzer import DependencyAnalyzer
+from kit.dependency_analyzer.dependency_analyzer import DependencyAnalyzer
 
 
 def test_dependency_analyzer_basic():
@@ -36,7 +36,7 @@ def function2():
 """)
         
         repo = Repository(tmpdir)
-        analyzer = DependencyAnalyzer(repo)
+        analyzer = repo.get_dependency_analyzer('python')
         
         graph = analyzer.build_dependency_graph()
         
@@ -81,7 +81,7 @@ def func_c():
 """)
         
         repo = Repository(tmpdir)
-        analyzer = DependencyAnalyzer(repo)
+        analyzer = repo.get_dependency_analyzer('python')
         
         analyzer.build_dependency_graph()
         
@@ -120,7 +120,7 @@ def helper_func():
 """)
         
         repo = Repository(tmpdir)
-        analyzer = DependencyAnalyzer(repo)
+        analyzer = repo.get_dependency_analyzer('python')
         
         analyzer.build_dependency_graph()
         
@@ -160,7 +160,7 @@ def complex_func():
 """)
         
         repo = Repository(tmpdir)
-        analyzer = DependencyAnalyzer(repo)
+        analyzer = repo.get_dependency_analyzer('python')
         
         analyzer.build_dependency_graph()
         
@@ -191,7 +191,7 @@ def utility_func():
             f.write("import module1\ndef func3(): return module1.func1()")
         
         repo = Repository(tmpdir)
-        analyzer = DependencyAnalyzer(repo)
+        analyzer = repo.get_dependency_analyzer('python')
         
         analyzer.build_dependency_graph()
         
@@ -228,7 +228,7 @@ def start_server():
 """)
         
         repo = Repository(tmpdir)
-        analyzer = DependencyAnalyzer(repo)
+        analyzer = repo.get_dependency_analyzer('python')
         
         analyzer.build_dependency_graph()
         
@@ -282,7 +282,7 @@ def utils_function():
 """)
         
         repo = Repository(tmpdir)
-        analyzer = DependencyAnalyzer(repo)
+        analyzer = repo.get_dependency_analyzer('python')
         
         analyzer.build_dependency_graph()
         
@@ -296,3 +296,90 @@ def utils_function():
         
         assert report["summary"]["total_modules"] > 5
         assert "os" in report["external_dependencies"]
+
+
+def test_generate_llm_context():
+    """Test generating LLM-friendly context from dependency analysis."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        os.makedirs(f"{tmpdir}/myproject")
+        
+        with open(f"{tmpdir}/myproject/__init__.py", "w") as f:
+            f.write("# Project init\n")
+        
+        with open(f"{tmpdir}/myproject/core.py", "w") as f:
+            f.write("""
+# Core functionality module
+import os
+import sys
+import json
+
+def core_function():
+    return json.dumps({'path': os.path.join('a', 'b')})
+""")
+        
+        with open(f"{tmpdir}/myproject/utils.py", "w") as f:
+            f.write("""
+# Utility functions
+import os
+import datetime
+
+def get_timestamp_path(filename):
+    return os.path.join(str(datetime.datetime.now()), filename)
+""")
+        
+        with open(f"{tmpdir}/myproject/api.py", "w") as f:
+            f.write("""
+# API module
+from myproject import core
+from myproject import utils
+import requests  # External third-party dependency
+
+def api_call():
+    path = utils.get_timestamp_path('data.json')
+    return requests.get(core.core_function())
+""")
+        
+        with open(f"{tmpdir}/myproject/circular_a.py", "w") as f:
+            f.write("""
+import myproject.circular_b
+
+def function_a():
+    return myproject.circular_b.function_b()
+""")
+        
+        with open(f"{tmpdir}/myproject/circular_b.py", "w") as f:
+            f.write("""
+import myproject.circular_a
+
+def function_b():
+    return myproject.circular_a.function_a()
+""")
+        
+        repo = Repository(tmpdir)
+        analyzer = repo.get_dependency_analyzer('python')
+        
+        analyzer.build_dependency_graph()
+        
+        md_output = analyzer.generate_llm_context(output_format="markdown")
+        
+        assert "# Dependency Analysis Summary" in md_output
+        assert "## Overview" in md_output
+        assert "## Key Components" in md_output
+        assert "## Python-Specific Insights" in md_output
+        
+        assert "## Circular Dependencies" in md_output
+        
+        text_output = analyzer.generate_llm_context(output_format="text")
+        
+        assert "DEPENDENCY ANALYSIS SUMMARY" in text_output
+        assert "OVERVIEW:" in text_output
+        assert "KEY COMPONENTS:" in text_output
+        assert "PYTHON-SPECIFIC INSIGHTS:" in text_output
+        
+        output_file = f"{tmpdir}/llm_context.md"
+        analyzer.generate_llm_context(output_path=output_file)
+        
+        assert os.path.exists(output_file)
+        with open(output_file, 'r') as f:
+            content = f.read()
+            assert "Dependency Analysis Summary" in content

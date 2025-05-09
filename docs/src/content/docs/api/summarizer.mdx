@@ -75,9 +75,9 @@ You can customize this by creating an `OpenAIConfig` instance and passing it to 
 from kit.summaries import OpenAIConfig
 
 # Example: Customize model and temperature
-my_config = OpenAIConfig(model="gpt-3.5-turbo", temperature=0.2)
+my_config = OpenAIConfig(model="o3-mini", temperature=0.2)
 summarizer = repo.get_summarizer(config=my_config)
 
-# Now summarizer will use gpt-3.5-turbo with temperature 0.2
+# Now summarizer will use o3-mini with temperature 0.2
 summary = summarizer.summarize_file("path/to/your/file.py")
 ```

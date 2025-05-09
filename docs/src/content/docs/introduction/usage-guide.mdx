@@ -123,42 +123,40 @@ The `DocstringIndexer` is responsible for managing the summarization process and
 ```python
 from kit import Repository
 from kit.docstring_indexer import DocstringIndexer
-from kit.models import OpenAI # Or your preferred LLM provider model
+from kit.summaries import Summarizer, OpenAIConfig
+from sentence_transformers import SentenceTransformer  # or any embedder of your choice
 
 # 1. Initialize your Repository
-repo_path = "tests/fixtures/realistic_repo" # Or your project path
-repo = Repository(repo_path)
+repo = Repository("tests/fixtures/realistic_repo")  # Or your project path
 
-# 2. Configure your LLM
-# Ensure your API key is set (e.g., OPENAI_API_KEY environment variable)
-llm_config = OpenAI(model="gpt-3.5-turbo") 
+# 2. Configure the LLM-powered summarizer
+# Make sure the relevant API key (e.g., OPENAI_API_KEY) is set in your environment
+summarizer = Summarizer(repo, OpenAIConfig(model="gpt-4o"))
 
-# 3. Initialize the DocstringIndexer
-# It needs the repository and an LLM configuration.
-# You can also specify a directory to cache generated docstrings.
+# 3. Provide an embedding function (str -> list[float]) for the vector index
+st_model = SentenceTransformer("all-MiniLM-L6-v2")
+embed_fn = lambda text: st_model.encode(text).tolist()
+
+# 4. Create the DocstringIndexer
+#    You can specify where on disk to persist the vector DB via `persist_dir`.
 indexer = DocstringIndexer(
-    repository=repo, 
-    llm_config=llm_config,
-    cache_dir="kit_docstring_cache" 
+    repo,
+    summarizer,
+    embed_fn,
+    persist_dir="kit_docstring_cache",
 )
 
-# 4. Build the index (generates summaries for new/changed files/symbols)
-# This can take time depending on the repo size and LLM speed.
-indexer.build_index() 
+# 5. Build the index (generates summaries for new/changed files/symbols)
+#    This may take some time depending on repository size and LLM speed.
+indexer.build(force=True)  # `level="symbol"` by default
 
-# 5. Get a summary for a specific symbol
-# For example, a function 'greet' in 'utils.py'
-summary = indexer.get_summary(file_path="utils.py", symbol_name="greet")
-if summary:
-    print(f"Summary for utils.greet:\n{summary.text}")
+# 6. Retrieve a summary – use the built-in SummarySearcher
+searcher = indexer.get_searcher()
+hits = searcher.search("utils.greet", top_k=1)  # Search by symbol or natural language
+if hits:
+    print("Summary:", hits[0]["summary"])
 else:
-    print("Summary not found or could not be generated.")
-
-# You can also get summaries for entire files
-file_summary = indexer.get_summary(file_path="app.py")
-if file_summary:
-    print(f"Summary for app.py:\n{file_summary.text}")
-
+    print("No summary found (yet).")
 ```
 
 This generated summary can then be used for various purposes, including enhancing semantic search or providing contextual information for code generation tasks. Refer to the [Core Concepts: Docstring Indexing](/core-concepts/docstring-indexing) page for more details on configuration and advanced usage.

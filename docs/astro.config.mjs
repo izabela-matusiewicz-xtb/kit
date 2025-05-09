@@ -47,7 +47,6 @@ export default defineConfig({
             "tutorials/dump_repo_map",
             "tutorials/integrating_supersonic",
             "tutorials/recipes",
-            "tutorials/semantic_code_search",
           ],
         },
         // Remove the dedicated Recipes link, it will be picked up by Tutorials autogeneration

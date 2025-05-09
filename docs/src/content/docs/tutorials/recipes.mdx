@@ -30,7 +30,7 @@ for u in usages:
 for rel_path, new_src in edits.items():
     Path(repo.repo_path, rel_path).write_text(new_src)
 
-repo.mapper.scan_repo()  # refresh symbols if you’ll run more queries
+repo.mapper.scan_repo()  # refresh symbols if you'll run more queries
 ```
 
 ---
@@ -39,10 +39,65 @@ repo.mapper.scan_repo()  # refresh symbols if you’ll run more queries
 
 ```python
 from kit import Repository
+# Assuming OpenAI for this example, and API key is set in environment
+from kit.summaries import OpenAIConfig 
+
 repo = Repository(".")
 assembler = repo.get_context_assembler()
-assembler.add_diff(diff_text)  # diff_text from `git diff`
-summary = repo.get_summarizer().summarize(assembler.format_context())
+# diff_text would be a string containing the output of `git diff`
+# Example: 
+# diff_text = subprocess.run(["git", "diff", "HEAD~1"], capture_output=True, text=True).stdout
+
+# Ensure diff_text is populated before this step in a real script
+diff_text = """diff --git a/file.py b/file.py
+index 0000000..1111111 100644
+--- a/file.py
++++ b/file.py
+@@ -1,1 +1,1 @@
+-old line
++new line
+""" # Placeholder diff_text
+
+assembler.add_diff(diff_text)
+context_blob = assembler.format_context()
+
+# Get the summarizer and its underlying LLM client to summarize arbitrary text
+# This example assumes you want to use the default OpenAI configuration for the summarizer.
+# If you have a specific config (OpenAI, Anthropic, Google), pass it to get_summarizer.
+summarizer_instance = repo.get_summarizer() # Uses default OpenAIConfig
+llm_client = summarizer_instance._get_llm_client() # Access the configured client
+
+summary = "Could not generate summary."
+if hasattr(llm_client, 'chat') and hasattr(llm_client.chat, 'completions'): # OpenAI-like client
+    try:
+        response = llm_client.chat.completions.create(
+            model=summarizer_instance.config.model if summarizer_instance.config else "gpt-4o", # Get model from config
+            messages=[
+                {"role": "system", "content": "You are an expert software engineer. Please summarize the following code changes and context."},
+                {"role": "user", "content": context_blob}
+            ],
+            temperature=0.2,
+            max_tokens=500 # Adjust as needed
+        )
+        summary = response.choices[0].message.content.strip()
+    except Exception as e:
+        summary = f"Error generating summary: {e}"
+elif hasattr(llm_client, 'messages') and hasattr(llm_client.messages, 'create'): # Anthropic-like client
+    try:
+        response = llm_client.messages.create(
+            model=summarizer_instance.config.model if summarizer_instance.config else "claude-3-opus-20240229",
+            system="You are an expert software engineer. Please summarize the following code changes and context.",
+            messages=[
+                {"role": "user", "content": context_blob}
+            ],
+            max_tokens=500,
+            temperature=0.2,
+        )
+        summary = response.content[0].text.strip()
+    except Exception as e:
+        summary = f"Error generating summary: {e}"
+# Add similar elif for Google GenAI client if needed, or abstract this LLM call further
+
 print(summary)
 ```
 

@@ -114,32 +114,71 @@ def test_summarizer_init_invalid_config_type(mock_repo):
     with pytest.raises(TypeError, match="Unsupported LLM configuration"): # As per Summarizer.__init__
         Summarizer(repo=mock_repo, config=config)
 
+def test_summarizer_init_openai_config_with_base_url(mock_repo):
+    """Test Summarizer correctly initializes OpenAI client with a custom base_url."""
+    custom_api_key = "test_openrouter_key"
+    custom_base_url = "https://openrouter.ai/api/v1/test"
+    custom_model = "openrouter/some-model"
+
+    config = OpenAIConfig(
+        api_key=custom_api_key,
+        base_url=custom_base_url,
+        model=custom_model
+    )
+
+    with patch('openai.OpenAI', create=True) as mock_openai_constructor:
+        mock_openai_client_instance = MagicMock()
+        mock_openai_constructor.return_value = mock_openai_client_instance
+        
+        summarizer = Summarizer(repo=mock_repo, config=config)
+        
+        mock_openai_constructor.assert_called_once_with(
+            api_key=custom_api_key,
+            base_url=custom_base_url
+        )
+        assert summarizer._llm_client == mock_openai_client_instance
+
 # --- Test _get_llm_client ---
 
 @patch('openai.OpenAI', create=True)
 def test_get_llm_client_openai(mock_openai_constructor, mock_repo):
     """Test _get_llm_client returns the client created in __init__."""
-    # Set up mock before creating Summarizer
     mock_openai_instance = MagicMock()
     mock_openai_constructor.return_value = mock_openai_instance
     
-    # Patch the import to return our mock module
-    with patch('builtins.__import__', side_effect=lambda name, *args, **kwargs: 
-              MagicMock(OpenAI=mock_openai_constructor) if name == 'openai' else __import__(name, *args, **kwargs)):
-        config = OpenAIConfig(api_key="test_openai_key")
+    config = OpenAIConfig(api_key="test_openai_key")
+    with patch('openai.OpenAI', new=mock_openai_constructor):
         summarizer = Summarizer(repo=mock_repo, config=config)
-        
-        # The client should have been created in __init__
         mock_openai_constructor.assert_called_once_with(api_key="test_openai_key")
         
-        # _get_llm_client should return the already created client
         client = summarizer._get_llm_client()
         assert client is summarizer._llm_client
 
-    # Call again to check caching
     client2 = summarizer._get_llm_client()
-    mock_openai_constructor.assert_called_once() # Should not be called again
+    mock_openai_constructor.assert_called_once() 
     assert client2 == client
+
+@patch('openai.OpenAI', create=True)
+def test_get_llm_client_openai_with_base_url_lazy_load(mock_openai_lazy_constructor, mock_repo):
+    """Test _get_llm_client lazy loads OpenAI client with base_url if not already initialized."""
+    custom_api_key = "test_lazy_key"
+    custom_base_url = "http://lazy_load_url.com/v1"
+    config = OpenAIConfig(api_key=custom_api_key, base_url=custom_base_url)
+
+    with patch('openai.OpenAI', new=mock_openai_lazy_constructor) as patched_constructor_for_lazy:
+        summarizer = Summarizer(repo=mock_repo, config=config, llm_client=None)
+        patched_constructor_for_lazy.assert_called_once_with(api_key=custom_api_key, base_url=custom_base_url)
+        
+        summarizer._llm_client = None
+        mock_openai_lazy_constructor.reset_mock()
+
+        client = summarizer._get_llm_client()
+        
+        patched_constructor_for_lazy.assert_called_once_with(
+            api_key=custom_api_key,
+            base_url=custom_base_url
+        )
+        assert client is not None
 
 @patch('anthropic.Anthropic', create=True)
 def test_get_llm_client_anthropic(mock_anthropic_constructor, mock_repo):

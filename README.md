@@ -71,6 +71,12 @@ print(repo.extract_symbols('src/main.py'))
     *   Leverage LLMs to create natural language summaries for files, functions, or classes using the `Summarizer` (e.g., `summarizer.summarize_file()`, `summarizer.summarize_function()`).
     *   Build a searchable semantic index of these AI-generated docstrings with `DocstringIndexer` and query it with `SummarySearcher` to find code based on intent and meaning.
 
+*   **Analyze Code Dependencies:**
+    *   Map import relationships between modules using `repo.get_dependency_analyzer()` to understand your codebase structure.
+    *   Detect circular dependencies and visualize module relationships with `analyzer.find_cycles()` and `analyzer.visualize_dependencies()`.
+    *   Generate dependency reports and LLM-friendly context with `analyzer.generate_dependency_report()` and `analyzer.generate_llm_context()`.
+    *   Currently supports Python and Terraform (HCL), with a flexible architecture for adding more languages.
+
 *   **And much more...** `kit` also offers capabilities for semantic search on raw code, building custom context for LLMs, and more.
 
 Explore the **[Full Documentation](https://kit.cased.com)** for detailed usage, advanced features, and practical examples.

@@ -87,10 +87,10 @@ Text search results for "database connection":
   Clearly specify the search query used to generate the results.
 </Aside>
 
-### 5. Symbol Usages (`repo.get_references` or `repo.get_callers`/`get_callees`)
+### 5. Symbol Usages (`repo.find_symbol_usages`)
 
-*   **Context:** Where a specific symbol (function, class) is used or called throughout the codebase.
-*   **Use Cases:** Understanding the impact of changing a function, finding examples of how an API is used, dependency analysis.
+*   **Context:** Where a specific symbol (function, class) is used or called throughout the codebase. This method finds definitions and textual occurrences.
+*   **Use Cases:** Understanding the impact of changing a function, finding examples of how an API is used, basic dependency analysis.
 *   **Prompting Tip:** Specify the symbol whose usages are being listed.
 
 ```yaml
@@ -110,19 +110,16 @@ Usages of function connect_database (defined in src/db/connect.py):
 *   **Use Cases:** Finding code related to a concept (e.g., "user authentication logic"), exploring related functionality.
 *   **Prompting Tip:** Include the semantic query and label the results clearly.
 
-```yaml
+```
 # Example Context Block
 Semantic search results for "user login handling":
 - Chunk from src/auth/login.py (lines 25-40):
-  ```python
-  def handle_login(username, password):
-      # ... validation logic ...
-  ```
+    def handle_login(username, password):
+        # ... validation logic ...
+  
 - Chunk from src/models/user.py (lines 10-15):
-  ```python
-  class User:
-      # ... attributes ...
-  ```
+    class User:
+        # ... attributes ...
 ```
 
 <Aside type="note">
@@ -152,25 +149,22 @@ Code Diff:
   Pair this context with specific line numbers for targeted analysis.
 </Aside>
 
-### 9. Vector Search Results (`repo.search_vectors`)
+### 8. Vector Search Results (`repo.search_vectors`)
 
 *   **Context:** Code chunks similar to a given vector representation.
 *   **Use Cases:** Finding code related to a concept (e.g., "user authentication logic"), exploring related functionality.
 *   **Prompting Tip:** Include the vector query and label the results clearly.
 
-```yaml
+```
 # Example Context Block
 Vector search results for "user login handling":
 - Chunk from src/auth/login.py (lines 25-40):
-  ```python
-  def handle_login(username, password):
-      # ... validation logic ...
-  ```
+    def handle_login(username, password):
+        # ... validation logic ...
+
 - Chunk from src/models/user.py (lines 10-15):
-  ```python
-  class User:
-      # ... attributes ...
-  ```
+    class User:
+        # ... attributes ...
 ```
 
 <Aside type="note">
