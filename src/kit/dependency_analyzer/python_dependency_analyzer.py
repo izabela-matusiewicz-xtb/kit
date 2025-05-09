@@ -1,18 +1,19 @@
-"""Analyzes and visualizes code dependencies within a repository."""
+"""Analyzes and visualizes code dependencies within a Python repository."""
 
 from __future__ import annotations
 from typing import Dict, List, Optional, Any, TYPE_CHECKING, Union
 import os
+import sys
 import ast
 import logging
-from pathlib import Path
+from .dependency_analyzer import DependencyAnalyzer
 
 logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
-    from .repository import Repository
+    from ..repository import Repository
 
-class DependencyAnalyzer:
+class PythonDependencyAnalyzer(DependencyAnalyzer):
     """
     Analyzes internal and external dependencies in a codebase.
     
@@ -30,10 +31,8 @@ class DependencyAnalyzer:
         Args:
             repository: A kit.Repository instance
         """
-        self.repo = repository
-        self.dependency_graph: Dict[str, Dict[str, Any]] = {}
+        super().__init__(repository)
         self._module_map: Dict[str, str] = {}
-        self._initialized = False
     
     def build_dependency_graph(self) -> Dict[str, Dict[str, Any]]:
         """
@@ -413,13 +412,11 @@ class DependencyAnalyzer:
         if not self._initialized:
             self.build_dependency_graph()
         
-        # Convert file path to module name
         module_path = os.path.splitext(file_path)[0]
         module_name = module_path.replace('/', '.').replace('\\', '.')
         
-        # Handle __init__.py files
         if module_name.endswith('.__init__'):
-            module_name = module_name[:-9]  # Remove .__init__
+            module_name = module_name[:-9]
         
         if module_name not in self.dependency_graph:
             return {
@@ -429,11 +426,9 @@ class DependencyAnalyzer:
                 'dependents': []
             }
         
-        # Get direct dependencies and dependents
         dependencies = self.get_module_dependencies(module_name)
         dependents = self.get_dependents(module_name)
         
-        # Map dependencies to their types
         dependencies_info = []
         for dep in dependencies:
             if dep in self.dependency_graph:
@@ -449,7 +444,6 @@ class DependencyAnalyzer:
                     'path': None
                 })
         
-        # Map dependents to their types
         dependents_info = []
         for dep in dependents:
             dependents_info.append({
@@ -478,14 +472,11 @@ class DependencyAnalyzer:
         if not self._initialized:
             self.build_dependency_graph()
         
-        # Count internal and external dependencies
         internal_modules = [m for m, data in self.dependency_graph.items() if data['type'] == 'internal']
         external_modules = [m for m, data in self.dependency_graph.items() if data['type'] == 'external']
         
-        # Find cycles
         cycles = self.find_cycles()
         
-        # Find highly connected modules (potential refactoring candidates)
         high_dependency_modules = []
         for module, data in self.dependency_graph.items():
             if data['type'] == 'internal':
@@ -500,7 +491,6 @@ class DependencyAnalyzer:
                         'dependency_count': len(dependencies)
                     })
         
-        # Generate report
         report = {
             'summary': {
                 'total_modules': len(self.dependency_graph),
@@ -586,4 +576,120 @@ class DependencyAnalyzer:
                     dot.edge(module, dep)
         
         dot.render(output_path, cleanup=True)
-        return f"{output_path}.{format}"
+        return f"{output_path}.{format}"  
+        
+    def generate_llm_context(self, max_tokens: int = 4000, output_format: str = 'markdown', output_path: Optional[str] = None) -> str:
+        """
+        Generate a Python-specific natural language description of the dependency graph optimized for LLM consumption.
+        
+        This method extends the base implementation with Python-specific insights about imports,
+        modules, and package structure to provide richer context to large language models.
+        
+        Args:
+            max_tokens: Approximate maximum number of tokens in the output (rough guideline)
+            output_format: Format of the output ('markdown', 'text')
+            output_path: Optional path to save the output to a file
+            
+        Returns:
+            A string containing the natural language description of the dependency structure
+        """
+        base_summary = super().generate_llm_context(max_tokens, output_format, None)
+        
+        # Define standard library modules (simplified list for common ones)
+        stdlib_modules = {'os', 'sys', 'io', 'time', 'datetime', 'math', 'random', 'json', 
+                          're', 'collections', 'functools', 'itertools', 'pathlib', 'typing',
+                          'abc', 'argparse', 'ast', 'asyncio', 'base64', 'csv', 'ctypes',
+                          'enum', 'glob', 'hashlib', 'http', 'inspect', 'logging', 'pickle',
+                          'platform', 'shutil', 'socket', 'sqlite3', 'statistics', 'string',
+                          'subprocess', 'tempfile', 'threading', 'unittest', 'urllib', 'uuid',
+                          'xml', 'zipfile'}
+        
+        try:
+            if hasattr(sys, 'stdlib_module_names'):
+                stdlib_modules = set(sys.stdlib_module_names)
+        except Exception:
+            pass
+        
+        standard_lib_count = len([m for m in self.dependency_graph 
+                               if self.dependency_graph[m].get('type') == 'external' 
+                               and m.split('.')[0] in stdlib_modules])
+        third_party_count = len([m for m in self.dependency_graph 
+                             if self.dependency_graph[m].get('type') == 'external' 
+                             and m.split('.')[0] not in stdlib_modules])
+        
+        heavy_importers = sorted(
+            [(m, len(deps)) for m, deps in 
+             [(m, self.dependency_graph[m].get('dependencies', [])) for m in self.dependency_graph 
+              if self.dependency_graph[m].get('type') == 'internal']],
+            key=lambda x: x[1],
+            reverse=True
+        )[:5]
+        
+        module_import_counts: Dict[str, int] = {}
+        for m in self.dependency_graph:
+            if self.dependency_graph[m].get('type') == 'internal':
+                for dep in self.dependency_graph[m].get('dependencies', []):
+                    module_import_counts[dep] = module_import_counts.get(dep, 0) + 1
+        
+        most_imported = sorted(
+            module_import_counts.items(),
+            key=lambda x: x[1],
+            reverse=True
+        )[:5]
+        
+        if output_format == 'markdown':
+            parts = base_summary.split('## Additional Insights')
+            
+            python_insights = ["## Python-Specific Insights\n"]
+            
+            python_insights.append("### Dependency Types\n")
+            python_insights.append(f"- Standard library imports: {standard_lib_count}\n")
+            python_insights.append(f"- Third-party library imports: {third_party_count}\n\n")
+            
+            if heavy_importers:
+                python_insights.append("### Modules with Most Dependencies\n")
+                for module, count in heavy_importers:
+                    python_insights.append(f"- **{module}** imports {count} modules\n")
+                python_insights.append("\n")
+            
+            if most_imported:
+                python_insights.append("### Most Commonly Used Modules\n")
+                for module, count in most_imported:
+                    module_type = "internal" if module in self.dependency_graph and \
+                                  self.dependency_graph[module].get('type') == 'internal' else "external"
+                    python_insights.append(f"- **{module}** ({module_type}) is imported by {count} modules\n")
+                python_insights.append("\n")
+            
+            result = parts[0] + ''.join(python_insights) + '## Additional Insights' + parts[1]
+        
+        else:
+            parts = base_summary.split('ADDITIONAL INSIGHTS:')
+            
+            python_insights = ["PYTHON-SPECIFIC INSIGHTS:\n"]
+            python_insights.append("------------------------\n\n")
+            
+            python_insights.append("Dependency Types:\n")
+            python_insights.append(f"- Standard library imports: {standard_lib_count}\n")
+            python_insights.append(f"- Third-party library imports: {third_party_count}\n\n")
+            
+            if heavy_importers:
+                python_insights.append("Modules with Most Dependencies:\n")
+                for module, count in heavy_importers:
+                    python_insights.append(f"- {module} imports {count} modules\n")
+                python_insights.append("\n")
+            
+            if most_imported:
+                python_insights.append("Most Commonly Used Modules:\n")
+                for module, count in most_imported:
+                    module_type = "internal" if module in self.dependency_graph and \
+                                  self.dependency_graph[module].get('type') == 'internal' else "external"
+                    python_insights.append(f"- {module} ({module_type}) is imported by {count} modules\n")
+                python_insights.append("\n")
+            
+            result = parts[0] + ''.join(python_insights) + 'ADDITIONAL INSIGHTS:' + parts[1]
+        
+        if output_path:
+            with open(output_path, 'w') as f:
+                f.write(result)
+        
+        return result

@@ -13,7 +13,7 @@ from pathlib import Path
 # Use TYPE_CHECKING for Summarizer to avoid circular imports
 if TYPE_CHECKING:
     from .summaries import Summarizer, OpenAIConfig, AnthropicConfig, GoogleConfig
-    from .dependency_analyzer import DependencyAnalyzer
+    from .dependency_analyzer.dependency_analyzer import DependencyAnalyzer
 
 class Repository:
     """
@@ -245,24 +245,33 @@ class Repository:
         """Return a ContextAssembler bound to this repository."""
         return ContextAssembler(self)
         
-    def get_dependency_analyzer(self) -> 'DependencyAnalyzer':
+    def get_dependency_analyzer(self, language: str = 'python') -> 'DependencyAnalyzer':
         """
         Factory method to get a DependencyAnalyzer instance configured for this repository.
         
         The DependencyAnalyzer helps visualize and analyze dependencies between modules
-        in your codebase, identifying import relationships, cycles, and more.
+        or resources in your codebase, identifying relationships, cycles, and more.
         
+        Args:
+            language: The language to analyze. Currently supported: 'python', 'terraform'
+            
         Returns:
-            A DependencyAnalyzer instance bound to this repository.
+            A DependencyAnalyzer instance bound to this repository for the specified language.
             
         Example:
+            >>> # Get Python dependency analyzer (default)
             >>> analyzer = repo.get_dependency_analyzer()
+            >>> # Or explicitly specify a language
+            >>> analyzer = repo.get_dependency_analyzer('terraform')
             >>> graph = analyzer.build_dependency_graph()
             >>> analyzer.export_dependency_graph(output_format="dot", output_path="dependencies.dot")
             >>> cycles = analyzer.find_cycles()
+            
+        Raises:
+            ValueError: If the specified language is not supported
         """
-        from .dependency_analyzer import DependencyAnalyzer
-        return DependencyAnalyzer(self)
+        from .dependency_analyzer.dependency_analyzer import DependencyAnalyzer
+        return DependencyAnalyzer.get_for_language(self, language)
 
     def find_symbol_usages(self, symbol_name: str, symbol_type: Optional[str] = None) -> List[Dict[str, Any]]:
         """
