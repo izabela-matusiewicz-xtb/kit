@@ -27,6 +27,9 @@ dependencies = [
     "black"
 ]
 
+[project.optional-dependencies]
+mcp = ["mcp>=0.1.0"]
+
 [project.urls]
 Homepage = "https://github.com/cased/kit"
 
@@ -54,3 +57,5 @@ ignore_missing_imports = true
 
 [project.scripts]
 kit = "kit.cli:app"
+kit-mcp = "kit.mcp:main"
+

@@ -14,6 +14,9 @@ Use `kit` to build things like code reviewers, code generators, even IDEs, all e
 ```bash
 # Installation (includes all features)
 pip install cased-kit
+
+# Install with specific features
+pip install cased-kit[mcp]  # For MCP server
 ```
 
 ### Install from Source
@@ -23,7 +26,10 @@ git clone https://github.com/cased/kit.git
 cd kit
 uv venv .venv
 source .venv/bin/activate
-uv pip install -e .
+uv pip install -e .  # Install all features
+
+# install specific features: 
+uv pip install -e ".[mcp]"  # For MCP server
 ```
 
 ## Basic Usage
