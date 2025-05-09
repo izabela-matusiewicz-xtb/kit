@@ -247,10 +247,10 @@ class Summarizer:
             if isinstance(self.config, OpenAIConfig):
                 try:
                     import openai
-                    client_params = {"api_key": self.config.api_key}
                     if self.config.base_url:
-                        client_params["base_url"] = self.config.base_url
-                    self._llm_client = openai.OpenAI(**client_params)
+                        self._llm_client = openai.OpenAI(api_key=self.config.api_key, base_url=self.config.base_url)
+                    else:
+                        self._llm_client = openai.OpenAI(api_key=self.config.api_key)
                 except ImportError:
                     raise LLMError("OpenAI SDK (openai) not available. Please install it.")
             elif isinstance(self.config, AnthropicConfig):
@@ -283,10 +283,10 @@ class Summarizer:
         try:
             if isinstance(self.config, OpenAIConfig):
                 from openai import OpenAI # Local import for OpenAI client
-                client_params = {"api_key": self.config.api_key}
                 if self.config.base_url:
-                    client_params["base_url"] = self.config.base_url
-                client = OpenAI(**client_params)
+                    client = OpenAI(api_key=self.config.api_key, base_url=self.config.base_url)
+                else:
+                    client = OpenAI(api_key=self.config.api_key)
             elif isinstance(self.config, AnthropicConfig):
                 from anthropic import Anthropic # Local import for Anthropic client
                 client = Anthropic(api_key=self.config.api_key)  # type: ignore # Different client type
