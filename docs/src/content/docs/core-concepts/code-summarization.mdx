@@ -109,7 +109,7 @@ To use OpenRouter:
 2. Set the `base_url` to OpenRouter's API endpoint (e.g., `https://openrouter.ai/api/v1`).
 3. The `model` parameter should be the specific model string as recognized by OpenRouter (e.g., `meta-llama/llama-3.3-70b-instruct`).
 
-```python
+```
 # Example for OpenRouter
 openrouter_config = OpenAIConfig(
     api_key="YOUR_OPENROUTER_API_KEY", # Replace with your OpenRouter key
@@ -118,9 +118,6 @@ openrouter_config = OpenAIConfig(
 )
 
 openrouter_summarizer = repo.get_summarizer(config=openrouter_config)
-# Now, calls to openrouter_summarizer will go to OpenRouter
-# summary_via_or = openrouter_summarizer.summarize_file("path/to/file.py")
-# print(f"Summary via OpenRouter:\n{summary_via_or}")
 ```
 
 # --- Anthropic Example --- 
@@ -132,7 +129,7 @@ anthropic_config = AnthropicConfig(
 # Get summarizer with specific Anthropic config
 anthropic_summarizer = repo.get_summarizer(config=anthropic_config)
 anthropic_summary = anthropic_summarizer.summarize_file("src/utils_anthropic.py")
-print(f"Anthropic Summary:\n{anthropic_summary}")
+# print(f"Anthropic Summary:\n{anthropic_summary}")
 
 # --- Google Example --- 
 # Define custom Google configuration
