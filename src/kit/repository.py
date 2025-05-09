@@ -13,6 +13,7 @@ from pathlib import Path
 # Use TYPE_CHECKING for Summarizer to avoid circular imports
 if TYPE_CHECKING:
     from .summaries import Summarizer, OpenAIConfig, AnthropicConfig, GoogleConfig
+    from .dependency_analyzer import DependencyAnalyzer
 
 class Repository:
     """
@@ -243,6 +244,25 @@ class Repository:
     def get_context_assembler(self) -> 'ContextAssembler':
         """Return a ContextAssembler bound to this repository."""
         return ContextAssembler(self)
+        
+    def get_dependency_analyzer(self) -> 'DependencyAnalyzer':
+        """
+        Factory method to get a DependencyAnalyzer instance configured for this repository.
+        
+        The DependencyAnalyzer helps visualize and analyze dependencies between modules
+        in your codebase, identifying import relationships, cycles, and more.
+        
+        Returns:
+            A DependencyAnalyzer instance bound to this repository.
+            
+        Example:
+            >>> analyzer = repo.get_dependency_analyzer()
+            >>> graph = analyzer.build_dependency_graph()
+            >>> analyzer.export_dependency_graph(output_format="dot", output_path="dependencies.dot")
+            >>> cycles = analyzer.find_cycles()
+        """
+        from .dependency_analyzer import DependencyAnalyzer
+        return DependencyAnalyzer(self)
 
     def find_symbol_usages(self, symbol_name: str, symbol_type: Optional[str] = None) -> List[Dict[str, Any]]:
         """
