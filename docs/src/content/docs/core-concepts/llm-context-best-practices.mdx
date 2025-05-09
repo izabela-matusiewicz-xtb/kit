@@ -110,19 +110,16 @@ Usages of function connect_database (defined in src/db/connect.py):
 *   **Use Cases:** Finding code related to a concept (e.g., "user authentication logic"), exploring related functionality.
 *   **Prompting Tip:** Include the semantic query and label the results clearly.
 
-```yaml
+```
 # Example Context Block
 Semantic search results for "user login handling":
 - Chunk from src/auth/login.py (lines 25-40):
-  ```python
-  def handle_login(username, password):
-      # ... validation logic ...
-  ```
+    def handle_login(username, password):
+        # ... validation logic ...
+  
 - Chunk from src/models/user.py (lines 10-15):
-  ```python
-  class User:
-      # ... attributes ...
-  ```
+    class User:
+        # ... attributes ...
 ```
 
 <Aside type="note">
@@ -158,19 +155,16 @@ Code Diff:
 *   **Use Cases:** Finding code related to a concept (e.g., "user authentication logic"), exploring related functionality.
 *   **Prompting Tip:** Include the vector query and label the results clearly.
 
-```yaml
+```
 # Example Context Block
 Vector search results for "user login handling":
 - Chunk from src/auth/login.py (lines 25-40):
-  ```python
-  def handle_login(username, password):
-      # ... validation logic ...
-  ```
+    def handle_login(username, password):
+        # ... validation logic ...
+
 - Chunk from src/models/user.py (lines 10-15):
-  ```python
-  class User:
-      # ... attributes ...
-  ```
+    class User:
+        # ... attributes ...
 ```
 
 <Aside type="note">
