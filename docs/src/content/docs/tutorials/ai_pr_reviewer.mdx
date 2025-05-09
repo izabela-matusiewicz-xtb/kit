@@ -24,15 +24,35 @@ Use the GitHub REST API to grab the *diff* **and** the PR-head **commit SHA**:
 import os, requests
 
 def fetch_pr(repo, pr_number):
+    """Return the PR's unified diff **and** head commit SHA."""
     token = os.getenv("GITHUB_TOKEN")
     url   = f"https://api.github.com/repos/{repo}/pulls/{pr_number}"
-    r = requests.get(url, headers={
-        "Accept": "application/vnd.github.v3.diff",
-        "Authorization": f"token {token}",
-    })
-    r.raise_for_status()
-    diff = r.text
-    head_sha = r.headers.get("X-GitHub-Head-SHA") or r.json()["head"]["sha"]
+
+    # 1) Unified diff
+    diff_resp = requests.get(
+        url,
+        headers={
+            "Accept": "application/vnd.github.v3.diff",
+            "Authorization": f"token {token}",
+        },
+        timeout=15,
+    )
+    diff_resp.raise_for_status()
+    diff = diff_resp.text
+
+    # 2) JSON metadata (for head SHA, title, description, …)
+    meta_resp = requests.get(
+        url,
+        headers={
+            "Accept": "application/vnd.github+json",
+            "Authorization": f"token {token}",
+        },
+        timeout=15,
+    )
+    meta_resp.raise_for_status()
+    pr_info = meta_resp.json()
+
+    head_sha = pr_info["head"]["sha"]
     return diff, head_sha
 ```
 
