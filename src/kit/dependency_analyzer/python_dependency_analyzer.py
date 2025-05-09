@@ -6,7 +6,6 @@ import os
 import sys
 import ast
 import logging
-from pathlib import Path
 from .dependency_analyzer import DependencyAnalyzer
 
 logger = logging.getLogger(__name__)

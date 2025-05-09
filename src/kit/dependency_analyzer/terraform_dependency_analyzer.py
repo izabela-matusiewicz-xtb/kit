@@ -1,11 +1,10 @@
 """Analyzes and visualizes infrastructure dependencies in Terraform code."""
 
 from __future__ import annotations
-from typing import Dict, List, Optional, Any, Set, Tuple, Union, TYPE_CHECKING
+from typing import Dict, List, Optional, Any, Union, TYPE_CHECKING
 import os
 import re
 import logging
-from pathlib import Path
 import json
 import hcl2
 from .dependency_analyzer import DependencyAnalyzer

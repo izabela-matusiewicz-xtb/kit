@@ -1,7 +1,7 @@
 """Base class for language-specific dependency analyzers."""
 
 from __future__ import annotations
-from typing import Dict, List, Optional, Any, TYPE_CHECKING, Union
+from typing import Dict, List, Optional, Any, TYPE_CHECKING
 from abc import ABC, abstractmethod
 import logging
 
