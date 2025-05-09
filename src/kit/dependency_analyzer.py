@@ -3,6 +3,7 @@
 from __future__ import annotations
 from typing import Dict, List, Optional, Any, TYPE_CHECKING, Union
 import os
+import ast
 import logging
 from pathlib import Path
 
@@ -290,7 +291,7 @@ class DependencyAnalyzer:
             if self.dependency_graph[start_module]['type'] != 'internal':
                 continue
                 
-            path = []
+            path: List[str] = []
             visited = set()
             
             def dfs(module):
