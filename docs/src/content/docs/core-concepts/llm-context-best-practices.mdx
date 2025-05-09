@@ -87,10 +87,10 @@ Text search results for "database connection":
   Clearly specify the search query used to generate the results.
 </Aside>
 
-### 5. Symbol Usages (`repo.get_references` or `repo.get_callers`/`get_callees`)
+### 5. Symbol Usages (`repo.find_symbol_usages`)
 
-*   **Context:** Where a specific symbol (function, class) is used or called throughout the codebase.
-*   **Use Cases:** Understanding the impact of changing a function, finding examples of how an API is used, dependency analysis.
+*   **Context:** Where a specific symbol (function, class) is used or called throughout the codebase. This method finds definitions and textual occurrences.
+*   **Use Cases:** Understanding the impact of changing a function, finding examples of how an API is used, basic dependency analysis.
 *   **Prompting Tip:** Specify the symbol whose usages are being listed.
 
 ```yaml
