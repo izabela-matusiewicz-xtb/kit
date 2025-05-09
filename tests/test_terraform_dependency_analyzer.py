@@ -143,7 +143,7 @@ resource "aws_subnet" "private" {
         assert os.path.exists(dot_file)
         with open(dot_file, 'r') as f:
             content = f.read()
-            assert 'digraph G' in content
+            assert 'digraph TerraformDependencies' in content
             assert 'aws_subnet.public' in content
             assert 'aws_subnet.private' in content
 
