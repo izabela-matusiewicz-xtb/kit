@@ -4,8 +4,9 @@ title: Dependency Graph Visualizer in Python
 
 import { Aside } from '@astrojs/starlight/components';
 
-This tutorial demonstrates how to visualize the import dependency graph of a Python codebase using `kit`. `kit`'s `DependencyAnalyzer` leverages Python's Abstract Syntax Tree (AST) parsing for robust analysis and can output the graph in DOT format, which you can render with Graphviz to generate visual diagrams.
-This feature is currently *only* for Python code.
+This tutorial demonstrates how to visualize the dependency graph of a codebase using `kit`. `kit`'s `DependencyAnalyzer` supports analyzing dependencies in both Python and Terraform codebases, and can output the graph in DOT format, which you can render with Graphviz to generate visual diagrams.
+
+For Python codebases, the analyzer leverages Abstract Syntax Tree (AST) parsing to track import relationships between modules. For Terraform codebases, it analyzes resource references and dependencies between infrastructure components.
 
 <Aside type="note">
   To directly generate an image (e.g., PNG, SVG) without manually handling DOT files, you can use the `analyzer.visualize_dependencies()` method, provided you have both the `graphviz` Python package and the Graphviz system executables installed.
@@ -24,7 +25,8 @@ def generate_dot_dependency_graph(repo_path: str) -> str:
     and exports the dependency graph in DOT format.
     """
     repo = Repository(repo_path)
-    analyzer = repo.get_dependency_analyzer()
+    # Specify the language ('python' or 'terraform')
+    analyzer = repo.get_dependency_analyzer('python')
     
     # The build_dependency_graph() method is called implicitly by export_dependency_graph
     # if the graph hasn't been built yet.
@@ -105,9 +107,24 @@ This will create a PNG image (`project_deps.png`) of your codebase's import rela
 - **Direct Visualization**: Use `analyzer.visualize_dependencies(output_path="graph_image_prefix", format="png")` to directly save an image (requires the `graphviz` Python library).
 - **Other Export Formats**: Export to JSON, GraphML, or an adjacency list using `analyzer.export_dependency_graph(output_format=...)`.
 - **Cycle Detection**: Use `analyzer.find_cycles()` to identify circular dependencies.
-- **Querying the Graph**: Programmatically explore dependencies with `analyzer.get_module_dependencies()` and `analyzer.get_dependents()`.
-- **Reports**: Generate a comprehensive JSON report with `analyzer.generate_dependency_report()`.
+- **Querying the Graph**: 
+  - For Python: Use `analyzer.get_module_dependencies()` and `analyzer.get_dependents()` to explore module relationships.
+  - For Terraform: Use `analyzer.get_resource_dependencies()` and `analyzer.get_resource_by_type()` to explore infrastructure dependencies.
+- **Reports and Context**: 
+  - Generate a comprehensive JSON report with `analyzer.generate_dependency_report()`.
+  - Create LLM-friendly context with `analyzer.generate_llm_context()`.
+- **File Paths**: The analyzer tracks absolute file paths for each component, making it easy to locate resources in complex projects.
+
+## Using with Terraform
+
+To analyze a Terraform codebase instead of Python, simply specify 'terraform' when getting the analyzer:
+
+```python
+analyzer = repo.get_dependency_analyzer('terraform')
+```
+
+The Terraform analyzer will map dependencies between resources, modules, variables, and other Terraform components. All resources in the graph include their absolute file paths, making it easy to locate them in complex infrastructure projects with files that might have the same name in different directories.
 
 ## Conclusion
 
-Visualizing dependencies helps you understand, refactor, and document complex codebases. With `kit`'s `DependencyAnalyzer` and tools like Graphviz, you can gain valuable insights into your Python project's structure.
+Visualizing dependencies helps you understand, refactor, and document complex codebases. With `kit`'s `DependencyAnalyzer` and tools like Graphviz, you can gain valuable insights into your project's structure, whether it's a Python application or Terraform infrastructure.
