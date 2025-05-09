@@ -4,23 +4,21 @@ title: Build an AI PR Reviewer
 
 import { Aside } from '@astrojs/starlight/components';
 
-`kit` shines when an LLM needs to *understand a change in the context of the **entire** code-base*—exactly what a human reviewer does. A good review often requires looking beyond the immediate lines changed to understand their implications, check for consistency with existing patterns, and ensure no unintended side-effects arise. This tutorial walks through a **minimal but complete** AI PR-review bot that demonstrates how `kit` provides this crucial whole-repo context. The bot will:
+`kit` shines when an LLM needs to *understand a change in the context of the **entire** code-base*—exactly what a human reviewer does. 
+A good review often requires looking beyond the immediate lines changed to understand their implications, check for consistency with existing patterns, and ensure no unintended side-effects arise. This tutorial walks through a **minimal but complete** AI PR-review bot that demonstrates how `kit` provides this crucial whole-repo context.
 
 1.  Fetches a GitHub PR (diff + metadata).
 2.  Builds a `kit.Repository` for the **changed branch** so we can query *any* file, symbol or dependency as it exists in that PR.
 3.  Generates a focused context bundle with `kit.llm_context.ContextAssembler`, which intelligently combines the diff, the full content of changed files, relevant neighboring code, and even semantically similar code from elsewhere in the repository.
 4.  Sends the bundle to an LLM and posts the comments back to GitHub.
 
-By the end you will see how a few dozen lines of Python—plus `kit`—give your LLM the *whole-repo* super-power, enabling it to perform more insightful and human-like code reviews.
+By the end you will see how a few dozen lines of Python—plus `kit`—give your LLM the *whole-repo* superpowers, enabling it to perform more insightful and human-like code reviews.
 
 ## 1. Fetch PR data
 
-To start, our AI reviewer needs the raw materials of the pull request. We'll use the GitHub REST API to grab two key pieces of information:
+To start, our AI reviewer needs the raw materials of the pull request. 
 
-*   The **diff**: This contains the actual line-by-line changes proposed in the PR. It's the primary subject of the review.
-*   The PR-head **commit SHA**: This is a unique identifier for the specific version of the code that the PR branch represents. `kit` will use this SHA to load and analyze the codebase exactly as it appears in the PR, ensuring our review is based on the correct snapshot of the files.
-
-Use the GitHub REST API to grab the *diff* **and** the PR-head **commit SHA** (we'll need that to load files as they exist in the PR):
+Use the GitHub REST API to grab the *diff* **and** the PR-head **commit SHA**:
 
 ```python
 import os, requests
@@ -41,19 +39,17 @@ def fetch_pr(repo, pr_number):
 ---
 ## 2. Create a `Repository` for the PR branch
 
-With the `head_sha` obtained, we can now leverage `kit.Repository` to access the codebase as it exists at that specific commit. A powerful feature of `kit` is its ability to work with remote Git repositories by specifying a URL and a `ref` (like our `head_sha`). This means `kit` can analyze the PR's code state often without needing a full, persistent local clone of that specific branch, making the process efficient.
+With the `head_sha` obtained, we **ideally** want to load the repository *at that exact commit*.  Today, `kit.Repository` will clone the **default branch** of a remote repository (usually `main`) when you pass a URL.  If you need the precise PR-head commit you have two options:
 
-`kit` can load a remote Git repo *at any commit*—no full clone required:
+1. Clone the repo yourself, `git checkout <head_sha>`, and then point `Repository` at that local path.
+2. Call `Repository(url)` to fetch the default branch **and** apply the PR diff in memory (as we do later in this tutorial).  For many review tasks this is sufficient because the changed files still exist on `main`, and the diff contains the exact edits.
+
+Direct `ref=`/commit checkout support is coming shortly.
+
+So for now we'll simply clone the default branch and rely on the diff for any code that hasn't been pushed upstream:
 
 ```python
 from kit import Repository
-
-# For this tutorial, we assume the remote repository's default branch 
-# reflects the PR's base or that a local clone is already checked out 
-# to the correct PR head commit (head_sha).
-# kit.Repository, when given a URL, currently clones the default branch.
-# Supporting checkout of a specific ref (like head_sha) directly via Repository 
-# initialization is forthcoming.
 
 repo = Repository(
     path_or_url="https://github.com/OWNER/REPO.git", # Replace with actual repo URL
@@ -62,7 +58,8 @@ repo = Repository(
 )
 ```
 
-The `cache_dir` parameter tells `kit` where to store parts of remote repositories it fetches. This caching significantly speeds up subsequent operations on the same repository or commit, which is very beneficial for a bot that might process multiple PRs or re-analyze a PR if it's updated.
+The `cache_dir` parameter tells `kit` where to store parts of remote repositories it fetches. 
+This caching significantly speeds up subsequent operations on the same repository or commit, which is very beneficial for a bot that might process multiple PRs or re-analyze a PR if it's updated.
 
 Now `repo` can *instantly* answer questions like:
 `repo.search_text("TODO")` (useful for checking if the PR resolves or introduces to-do items),
@@ -126,16 +123,16 @@ The `ContextAssembler` is used as follows:
 
     You can use queries derived from the PR's title or description to find examples of similar functionality, relevant design patterns, or areas that might require parallel updates.
 
-    **The Power of Summaries**: While `repo.search_semantic()` can operate on raw code, its effectiveness is significantly amplified when your `Repository` instance is configured with a `DocstringIndexer`. The `DocstringIndexer` (as detailed in the [Docstring Search Tutorial](/tutorials/docstring_search)) preprocesses your codebase, generating AI summaries for files or symbols. When `repo.search_semantic()` leverages this index, it matches based on the *meaning and purpose captured in these summaries*, leading to far more relevant and insightful results than simple keyword or raw code vector matching. This allows the AI reviewer to understand context like "find other places where we handle user authentication" even if the exact phrasing or code structure varies.
+    **The Power of Summaries**: While `repo.search_semantic()` can operate on raw code, its effectiveness is significantly amplified when your `Repository` instance is configured with a `DocstringIndexer`. The `DocstringIndexer` (see the [Docstring Search Tutorial](/tutorials/docstring_search)) preprocesses your codebase, generating AI summaries for files or symbols. When `repo.search_semantic()` leverages this index, it matches based on the *meaning and purpose* captured in these summaries, leading to far more relevant and insightful results than simple keyword or raw-code vector matching. This allows the AI reviewer to understand context like "find other places where we handle user authentication" even if the exact phrasing or code structure varies.
 
     The Python code snippet above illustrates how you might integrate this. Remember to ensure your `repo` object is properly set up with an embedding function and, for best results, a `DocstringIndexer`. Refer to the "[Docstring Search](/tutorials/docstring_search)" and "[Semantic Code Search](/tutorials/semantic_code_search)" tutorials for detailed setup guidance.
 
-Finally, `assembler.format_context()` consolidates all the added information into a single string (`context_blob`), ready to be sent to the LLM. This step might also involve applying truncation or specific formatting to optimize for the LLM's input requirements.
+Finally, `assembler.format_context()` consolidates all the added information into a single string (`context_blob`), ready to be sent to the LLM. This step might also involve applying truncation or specific formatting to optimise for the LLM's input requirements.
 
 ---
 ## 4. Prepare the LLM Prompt
 
-With the meticulously assembled `context_blob` from `kit`, we can now prompt an LLM. The quality of the prompt, including the system message that sets the LLM's role and the user message containing the context, is vital. Because `kit` has provided such comprehensive and well-structured context, the LLM is significantly better equipped to act like an "expert software engineer" and provide a nuanced, insightful review.
+With the meticulously assembled `context_blob` from `kit`, we can now prompt an LLM. The quality of the prompt—including the system message that sets the LLM's role and the user message containing the context—is vital. Because `kit` has provided such comprehensive and well-structured context, the LLM is significantly better equipped to act like an "expert software engineer" and provide a nuanced, insightful review.
 
 ```python
 from openai import OpenAI
@@ -160,8 +157,10 @@ This final step completes the loop by taking the LLM's generated review and post
 ```python
 requests.post(
     f"https://api.github.com/repos/{repo_full}/issues/{pr_number}/comments",
-    headers={"Authorization": f"token {os.getenv('GITHUB_TOKEN')}",
-             "Accept": "application/vnd.github.v3+json"},
+    headers={
+        "Authorization": f"token {os.getenv('GITHUB_TOKEN')}",
+        "Accept": "application/vnd.github.v3+json",
+    },
     json={"body": review},
     timeout=10,
 ).raise_for_status()
@@ -172,9 +171,9 @@ requests.post(
 
 This tutorial provides a foundational AI PR reviewer. `kit`'s components can help you extend it further:
 
-*   **Chunk large diffs or files**: If a PR is very large, the `ContextAssembler` currently adds full content. You might need strategies to chunk very large files (e.g., using `repo.chunk_file_by_symbols` or `repo.chunk_file_by_lines`) or diffs before adding them to the assembler, or implement more granular context addition to stay within LLM limits.
-*   **Custom ranking**: The `ContextAssembler` could be configured or extended to allow different weights for various context pieces (e.g., prioritizing semantic search matches that are highly relevant over less critical dependency information). `kit`'s search results, which often include scores, can inform this process.
-*   **Inline comments**: To provide more granular feedback, parse the LLM's output to identify suggestions pertaining to specific files and lines. `kit`'s symbol information (which includes line numbers from `RepoMapper`) is crucial for accurately mapping these suggestions back to the codebase and using the GitHub *review* API to post comments directly on the diff.
-*   **Supersonic**: For more advanced automation, tools like Supersonic could leverage `kit`'s understanding and context to not just suggest, but also *automatically apply* LLM-suggested changes, potentially opening follow-up PRs. This might involve `kit.Repository`'s file access methods and (in the future) more advanced code manipulation primitives.
+* **Chunk large diffs or files** – If a PR is very large, the `ContextAssembler` currently adds full content. You might need strategies to chunk very large files (e.g. `repo.chunk_file_by_symbols`) or diffs, or implement more granular context addition to stay within LLM limits.
+* **Custom ranking** – The `ContextAssembler` could be configured or extended to allow different weights for various context pieces (e.g. prioritising semantic-search matches that are highly relevant over less critical information). `kit`'s search results, which include scores, can inform this process.
+* **Inline comments** – Parse the LLM's output to identify suggestions pertaining to specific files and lines, then use GitHub's *review* API to post comments directly on the diff. `kit`'s symbol mapping (line numbers from `RepoMapper`) is crucial here.
+* **Supersonic** – For more advanced automation, tools like Supersonic could leverage `kit`'s understanding to not just *suggest* but also *apply* LLM-recommended changes, potentially opening follow-up PRs.
 
-> With `kit` your LLM sees code the way *humans* do: in the rich context of the entire repository.  Better signal in → better reviews out.
+> With `kit` your LLM sees code the way *humans* do: in the rich context of the entire repository. Better signal in → better reviews out.
