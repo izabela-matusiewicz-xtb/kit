@@ -3,6 +3,7 @@
 from __future__ import annotations
 from typing import Dict, List, Optional, Any, TYPE_CHECKING, Union
 import os
+import sys
 import ast
 import logging
 from pathlib import Path
@@ -625,7 +626,7 @@ class PythonDependencyAnalyzer(DependencyAnalyzer):
             reverse=True
         )[:5]
         
-        module_import_counts = {}
+        module_import_counts: Dict[str, int] = {}
         for m in self.dependency_graph:
             if self.dependency_graph[m].get('type') == 'internal':
                 for dep in self.dependency_graph[m].get('dependencies', []):

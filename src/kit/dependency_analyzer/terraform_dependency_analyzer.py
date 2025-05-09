@@ -333,7 +333,8 @@ class TerraformDependencyAnalyzer(DependencyAnalyzer):
                     node_type = parts[0]
                     node_name = parts[1]
                 
-                self._add_node(target, node_category, node_type, node_name, None)
+                # Use empty string instead of None for file_path
+                self._add_node(target, node_category, node_type, node_name, "")
     
     def export_dependency_graph(self, output_format: str = 'json', output_path: Optional[str] = None) -> Union[Dict, str]:
         """
@@ -689,7 +690,7 @@ class TerraformDependencyAnalyzer(DependencyAnalyzer):
         """
         base_summary = super().generate_llm_context(max_tokens, output_format, None)
         
-        resource_counts = {}
+        resource_counts: Dict[str, int] = {}
         for node_id, data in self.dependency_graph.items():
             if data.get('category') == 'resource':
                 resource_type = data.get('type', 'unknown')
@@ -739,11 +740,12 @@ class TerraformDependencyAnalyzer(DependencyAnalyzer):
                 for resource, importance in key_resources:
                     res_type = self.dependency_graph[resource].get('type', 'unknown')
                     deps = len(self.dependency_graph[resource].get('dependencies', []))
-                    dependents = len(self.get_dependents(resource))
+                    dependents_count = len(self.get_dependents(resource))
                     file_path = self.dependency_graph[resource].get('path', '')
-                    path_to_display = file_path if file_path else 'unknown file'
+                    # Ensure file_path is treated as a string
+                    path_to_display = str(file_path) if file_path else 'unknown file'
                     tf_insights.append(f"- **{resource}** ({res_type}) [File: {path_to_display}]\n")
-                    tf_insights.append(f"  - Dependencies: {deps}, Dependents: {dependents}\n")
+                    tf_insights.append(f"  - Dependencies: {deps}, Dependents: {dependents_count}\n")
             
             if modules:
                 tf_insights.append("\n### Terraform Modules\n")
@@ -777,11 +779,12 @@ class TerraformDependencyAnalyzer(DependencyAnalyzer):
                 for resource, importance in key_resources:
                     res_type = self.dependency_graph[resource].get('type', 'unknown')
                     deps = len(self.dependency_graph[resource].get('dependencies', []))
-                    dependents = len(self.get_dependents(resource))
+                    dependents_count = len(self.get_dependents(resource))
                     file_path = self.dependency_graph[resource].get('path', '')
-                    path_to_display = file_path if file_path else 'unknown file'
+                    # Ensure file_path is treated as a string
+                    path_to_display = str(file_path) if file_path else 'unknown file'
                     tf_insights.append(f"- {resource} ({res_type}) [File: {path_to_display}]\n")
-                    tf_insights.append(f"  - Dependencies: {deps}, Dependents: {dependents}\n")
+                    tf_insights.append(f"  - Dependencies: {deps}, Dependents: {dependents_count}\n")
             
             if modules:
                 tf_insights.append("\nTerraform Modules:\n")
