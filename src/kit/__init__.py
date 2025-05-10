@@ -13,7 +13,6 @@ from .context_extractor import ContextExtractor
 from .vector_searcher import VectorSearcher
 from .docstring_indexer import DocstringIndexer, SummarySearcher
 from .llm_context import ContextAssembler
-from .dependency_analyzer import DependencyAnalyzer
 from .tree_sitter_symbol_extractor import TreeSitterSymbolExtractor
 
 try:

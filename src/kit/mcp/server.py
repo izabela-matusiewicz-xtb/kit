@@ -291,7 +291,7 @@ class KitServerLogic:
         Tool(name="get_file_tree", description="Return repo file structure", inputSchema=GetFileTreeParams.model_json_schema(), **ro),
         Tool(name="semantic_search", description="Semantic similarity search", inputSchema=SemanticSearchParams.model_json_schema(), **ro),
         Tool(name="get_documentation", description="Fetch docstrings / docs", inputSchema=GetDocumentationParams.model_json_schema(), **ro),
-        Tool(name="get_code_summary", description="Summarise a file (and optional symbol)", inputSchema=GetCodeSummaryParams.model_json_schema(), **ro),
+        Tool(name="get_code_summary", description="Get a summary of code for a given file. If symbol_name is provided, also attempts to summarize it as a function and class.", inputSchema=GetCodeSummaryParams.model_json_schema()),
     ]
 
     def list_prompts(self) -> list[Prompt]:

@@ -14,9 +14,6 @@ Use `kit` to build things like code reviewers, code generators, even IDEs, all e
 ```bash
 # Installation (includes all features)
 pip install cased-kit
-
-# Install with specific features
-pip install cased-kit[mcp]  # For MCP server
 ```
 
 ### Install from Source
@@ -27,9 +24,6 @@ cd kit
 uv venv .venv
 source .venv/bin/activate
 uv pip install -e .  # Install all features
-
-# install specific features: 
-uv pip install -e ".[mcp]"  # For MCP server
 ```
 
 ## Basic Usage
@@ -79,7 +73,17 @@ print(repo.extract_symbols('src/main.py'))
 
 *   **And much more...** `kit` also offers capabilities for semantic search on raw code, building custom context for LLMs, and more.
 
+### Model Context Protocol (MCP)
+
+MCP enables AI tools to understand and interact with your codebase through a local server. It provides capabilities like:
+
+- Code summaries and documentation generation
+- Symbol extraction and usage tracking
+- Code search and navigation
+- File tree exploration
+
 Explore the **[Full Documentation](https://kit.cased.com)** for detailed usage, advanced features, and practical examples.
+
 
 ## License
 
