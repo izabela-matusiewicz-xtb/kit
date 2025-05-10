@@ -3,7 +3,7 @@
 
 <img src="https://github.com/user-attachments/assets/7bdfa9c6-94f0-4ee0-9fdd-cbd8bd7ec060" width="360">
 
-`kit` is a modular, production-grade Python toolkit for codebase mapping, symbol extraction, code search, and building LLM-powered developer tools, agents, and workflows. 
+`kit` is a production-ready Python toolkit for codebase mapping, symbol extraction, code search, and building LLM-powered developer tools, agents, and workflows. 
 
 Use `kit` to build things like code reviewers, code generators, even IDEs, all enriched with the right code context.
 
@@ -12,7 +12,6 @@ Use `kit` to build things like code reviewers, code generators, even IDEs, all e
 ### Install from PyPI
 
 ```bash
-# Installation (includes all features)
 pip install cased-kit
 ```
 
@@ -47,7 +46,7 @@ print(repo.extract_symbols('src/main.py'))
 
 ## Key Features & Capabilities
 
-`kit` helps your apps and agents understand and interact with codebases, with components to build your own AI-powered developer tools. Things you can do:
+`kit` helps your apps and agents understand and interact with codebases, with components to build your own AI-powered developer tools.
 
 *   **Explore Code Structure:**
     *   High-level view with `repo.get_file_tree()` to list all files and directories.
