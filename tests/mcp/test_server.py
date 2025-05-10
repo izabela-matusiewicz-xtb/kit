@@ -2,6 +2,7 @@ from unittest.mock import patch, MagicMock
 from kit.summaries import LLMError
 import pytest
 from kit.mcp.server import KitServerLogic, MCPError, INVALID_PARAMS
+import uuid
 
 
 @pytest.fixture
@@ -11,7 +12,7 @@ def logic():
 
 def test_open_repository(logic):
     repo_id = logic.open_repository(".")
-    assert repo_id == "1"
+    uuid.UUID(repo_id)
     assert repo_id in logic._repos
 
 
