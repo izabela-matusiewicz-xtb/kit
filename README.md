@@ -47,22 +47,22 @@ print(repo.extract_symbols('src/main.py'))
 
 ## Key Features & Capabilities
 
-`kit` helps your apps and agents deeply understand and interact with codebases, providing the core components to build your own AI-powered developer tools. Here are just a few of the things you can do:
+`kit` helps your apps and agents understand and interact with codebases, with the core components to build your own AI-powered developer tools. Things you can do:
 
 *   **Explore Code Structure:**
-    *   Get a bird's-eye view with `repo.get_file_tree()` to list all files and directories.
-    *   Dive into specifics with `repo.extract_symbols()` to identify all functions, classes, and other code constructs, either across the entire repository or within a single file.
+    *   High-level view with `repo.get_file_tree()` to list all files and directories.
+    *   Dive down with `repo.extract_symbols()` to identify functions, classes, and other code constructs, either across the entire repository or within a single file.
 
 *   **Pinpoint Information:**
-    *   Perform precise textual or regular expression searches across your codebase using `repo.search_text()`.
-    *   Track down every definition and reference of a specific symbol (like a function or class) with `repo.find_symbol_usages()`.
+    *   Run regular expression searches across your codebase using `repo.search_text()`.
+    *   Track specific symbols (like a function or class) with `repo.find_symbol_usages()`.
 
 *   **Prepare Code for LLMs & Analysis:**
     *   Break down large files into manageable pieces for LLM context windows using `repo.chunk_file_by_lines()` or `repo.chunk_file_by_symbols()`.
-    *   Instantly grab the full definition of a function or class just by knowing a line number within it using `repo.extract_context_around_line()`.
+    *   Get the full definition of a function or class off a line number within it using `repo.extract_context_around_line()`.
 
-*   **Generate Code Summaries (Alpha):**
-    *   Leverage LLMs to create natural language summaries for files, functions, or classes using the `Summarizer` (e.g., `summarizer.summarize_file()`, `summarizer.summarize_function()`).
+*   **Generate Code Summaries:**
+    *   Use LLMs to create natural language summaries for files, functions, or classes using the `Summarizer` (e.g., `summarizer.summarize_file()`, `summarizer.summarize_function()`).
     *   Build a searchable semantic index of these AI-generated docstrings with `DocstringIndexer` and query it with `SummarySearcher` to find code based on intent and meaning.
 
 *   **Analyze Code Dependencies:**
