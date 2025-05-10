@@ -153,8 +153,11 @@ class KitServerLogic:
 
     def get_file_content(self, repo_id: str, file_path: str) -> str:
         repo = self.get_repo(repo_id)
+        # Validate that the requested path stays within repo
+        safe_path = self._check_within_repo(repo, file_path)
+        rel_path = str(safe_path.relative_to(Path(repo.repo_path)))
         try:
-            return repo.get_file_content(file_path)
+            return repo.get_file_content(rel_path)
         except FileNotFoundError as e:
             raise MCPError(code=INVALID_PARAMS, message=str(e))
         except Exception as e:
