@@ -23,8 +23,29 @@ LANGUAGES: dict[str, str] = {
     ".java": "java",
 }
 
-# Always use absolute path for queries root (one level higher)
-QUERIES_ROOT: str = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../queries"))
+# Resolve the absolute path to the nearest "queries" directory (repo-root) so that
+# the extractor works regardless of whether kit is installed in editable mode or
+# as a regular, site-packages distribution. We walk up from this file's location
+# until we find a sibling directory called ``queries``.
+
+def _locate_queries_root() -> str:
+    """Return the absolute path to the bundled *queries* directory.
+
+    We ascend parent directories until we discover a sibling folder named
+    "queries". If nothing is found (e.g. in a broken install), we fall back to
+    a relative path so that the extractor fails gracefully rather than crashing.
+    """
+    current_path = Path(__file__).resolve()
+    # Walk up the directory tree looking for a sibling "queries" directory
+    for parent in current_path.parents:
+        candidate = parent / "queries"
+        if candidate.is_dir():
+            return str(candidate)
+    return os.path.abspath(os.path.join(os.path.dirname(__file__), "../../queries"))
+
+
+# Absolute path to the *queries* directory discovered at import time
+QUERIES_ROOT: str = _locate_queries_root()
 
 class TreeSitterSymbolExtractor:
     """
