@@ -9,52 +9,35 @@ The Model Context Protocol (MCP) provides a unified API for codebase operations,
 
 ## Overview
 
-MCP enables AI tools to understand and interact with your codebase through a local server. It provides several key capabilities:
+Kit provides a MCP server implementation that exposes its code intelligence capabilities through a standardized protocol. This allows any MCP-compatible tool to leverage kit's advanced code understanding features.
 
-- **Code Summaries**: Generate natural language summaries of files, functions, and classes
-- **Symbol Information**: Extract and track functions, classes, and other code constructs
-- **Code Search**: Find specific code patterns or text across your codebase
-- **File Navigation**: Explore and understand your codebase structure
+When using kit as an MCP server, you gain access to:
+
+- **Code Search**: Perform text-based and semantic code searches
+- **Code Analysis**: Extract symbols, find symbol usages, and analyze dependencies
+- **Code Summarization**: Create natural language summaries of code
+- **File Navigation**: Explore file trees and repository structure
+
 
 ## Setup
 
-1. Configure your IDE (Cursor or Windsurf) by adding this to your settings:
+1. Install kit with MCP support:
+
+```bash
+pip install cased-kit
+```
+
+2. Configure your IDE (e.g. Windsurf) by adding this to your settings:
 
 ```json
 {
   "mcpServers": {
-    "kit": {
-      "command": "/path/to/your/venv/bin/kit-mcp",
-      "args": []
+    "kit-mcp": {
+      "command": "kit-mcp",
+      "env": {
+        "KIT_MCP_LOG_LEVEL": "DEBUG"
+      }
     }
   }
 }
 ```
-
-Replace `/path/to/your/venv/bin/kit-mcp` with the actual path to your kit-mcp executable. For example, if you're using a virtual environment in your project directory:
-
-```json
-{
-  "mcpServers": {
-    "kit": {
-      "command": "/Users/username/project/.venv/bin/kit-mcp",
-      "args": []
-    }
-  }
-}
-```
-
-
-
-
-## Requirements
-
-- Python 3.9 or higher
-- MCP version 1.8.0 or higher
-- An OpenAI API key (for code summarization features)
-
-## Next Steps
-
-- Learn about [Code Summaries](/docs/features/code-summaries)
-- Explore [Symbol Extraction](/docs/features/symbol-extraction)
-- Check out [Dependency Analysis](/docs/features/dependency-analysis)
