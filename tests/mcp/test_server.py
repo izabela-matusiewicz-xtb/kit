@@ -1,7 +1,9 @@
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 from kit.summaries import LLMError
 import pytest
+
 from kit.mcp.server import KitServerLogic, MCPError, INVALID_PARAMS
+
 import uuid
 
 

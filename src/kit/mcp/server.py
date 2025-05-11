@@ -46,11 +46,13 @@ from ..docstring_indexer import DocstringIndexer
 from ..summaries import Summarizer
 from ..tree_sitter_symbol_extractor import TreeSitterSymbolExtractor
 
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     stream=sys.stderr,
 )
+
 logger = logging.getLogger("kit-mcp")
 
 
@@ -467,6 +469,7 @@ async def serve() -> None:
     server = Server("kit")
     logic = KitServerLogic()
 
+
     @server.call_tool()
     async def call_tool(name: str, arguments: dict) -> list[TextContent | ErrorContent | ResourceContent]:
         try:
@@ -523,25 +526,57 @@ async def serve() -> None:
         except MCPError as e:
             return [create_error_content(e.code, e.message)]
         except Exception as e:
-            logger.exception("Unhandled error")
+            logger.exception("Unhandled error in call_tool")
             return [create_error_content(INTERNAL_ERROR, str(e))]
-        
+
     @server.list_tools()
     async def list_tools() -> list[Tool]:
-        return logic.list_tools()
+        try:
+            return logic.list_tools()
+        except Exception as e:
+            logger.exception("ERROR: Failed in list_tools method")
+            raise
 
     @server.list_prompts()
     async def list_prompts() -> list[Prompt]:
-        return logic.list_prompts()
+        try:
+            return logic.list_prompts()
+        except Exception as e:
+            logger.exception("ERROR: Failed in list_prompts method")
+            raise
 
     @server.list_resources()
     async def _list_resources() -> list[Resource]:
-        return logic.list_resources()
+        # Added try-except for robust logging
+        try:
+            return logic.list_resources()
+        except Exception as e:
+            logger.exception("ERROR: Failed in _list_resources method")
+            raise
 
     @server.get_prompt()
     async def get_prompt(name: str, arguments: dict | None) -> GetPromptResult:
-        return logic.get_prompt(name, arguments)
+        # Added try-except for robust logging
+        try:
+            return logic.get_prompt(name, arguments)
+        except MCPError as e: # Already handled MCPError specifically
+            logger.warn(f"MCPError in get_prompt ({name}): {e.message}")
+            raise
+        except Exception as e:
+            logger.exception(f"ERROR: Unhandled error in get_prompt ({name})")
+            raise
 
-    options = server.create_initialization_options()
+    # Now, add logging around options creation
+    logger.info("Attempting to create MCP initialization options...")
+    try:
+        options = server.create_initialization_options()
+        logger.info("MCP initialization options created successfully.")
+    except Exception as e:
+        logger.exception("ERROR: Failed to create MCP initialization options")
+        # Depending on server.create_initialization_options behavior,
+        # we might need to sys.exit(1) or raise if it doesn't propagate
+        raise # Re-raise to stop the server if options are critical
+
+    logger.info("Starting MCP server run loop with stdio...")
     async with stdio_server() as (read_stream, write_stream):
         await server.run(read_stream, write_stream, options)

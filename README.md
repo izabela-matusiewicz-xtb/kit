@@ -12,7 +12,7 @@ Use `kit` to build things like code reviewers, code generators, even IDEs, all e
 ### Install from PyPI
 
 ```bash
-# Installation (includes all features)
+# Standard installation (all features, including the kit-mcp server)
 pip install cased-kit
 ```
 
@@ -23,7 +23,7 @@ git clone https://github.com/cased/kit.git
 cd kit
 uv venv .venv
 source .venv/bin/activate
-uv pip install -e .  # Install all features
+uv pip install -e .
 ```
 
 ## Basic Usage
