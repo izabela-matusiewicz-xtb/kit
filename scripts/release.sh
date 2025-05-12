@@ -108,12 +108,15 @@ echo ""
 echo "Building package..."
 # Clean previous builds
 rm -rf dist/
-python -m build
+
+# Use system Python directly to ensure build and twine are found
+# We use /usr/bin/env to ensure it's found regardless of the user's PATH
+/usr/bin/env python -m build
 
 # --- Publish to PyPI ---
 echo ""
 echo "Publishing package to PyPI..."
-python -m twine upload dist/*
+/usr/bin/env python -m twine upload dist/*
 
 # --- Tagging and Pushing Git Tag ---
 echo ""
