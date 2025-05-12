@@ -203,13 +203,13 @@ def _sentence_transformers_unavailable():
     try:
         # Actually try to import SentenceTransformer class to catch import chain issues
         # This will trigger all the dependent imports (transformers, etc.)
-        from sentence_transformers import SentenceTransformer  # noqa
-        
+        from sentence_transformers import SentenceTransformer
+
         # Try to initialize a model name to further validate the import chain
         if not hasattr(SentenceTransformer, "__init__"):
             print("DEBUG: SentenceTransformer class doesn't have expected attributes")
             return True
-            
+
         print("DEBUG: sentence_transformers and SentenceTransformer class imported OK")
         return False
     except (ImportError, ModuleNotFoundError) as err:
@@ -234,7 +234,7 @@ def test_vector_searcher_with_sentence_transformer():
         from sentence_transformers import SentenceTransformer
     except Exception as e:
         pytest.skip(f"Failed to import SentenceTransformer: {e}")
-    
+
     try:
         model = SentenceTransformer(MODEL_NAME)
     except Exception as e:
