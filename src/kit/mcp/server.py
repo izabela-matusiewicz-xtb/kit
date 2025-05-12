@@ -475,10 +475,14 @@ class KitServerLogic:
         except KeyError as e:
             raise MCPError(code=INVALID_PARAMS, message=f"Missing required argument: {e.args[0]}")
         except ValidationError as e:
-            missing = next((err.get("loc", [None])[0] for err in e.errors() if err.get("type") == "missing"), None)
-            if missing:
-                raise MCPError(code=INVALID_PARAMS, message=f"Missing required argument: {missing}")
+            # Attempt to find the first missing field for a more specific error
+            missing_field = next((err.get("loc", [None])[0] for err in e.errors() if err.get("type") == "missing"), None)
+            if missing_field:
+                raise MCPError(code=INVALID_PARAMS, message=f"Missing required argument: {missing_field}")
+            # Fallback to generic ValidationError message if no specific missing field found
             raise MCPError(code=INVALID_PARAMS, message=str(e))
+        # Let other MCPError instances or unexpected Exceptions bubble up if not caught by specific cases above
+        # The async get_prompt handler will catch them.
 
     def list_resources(self) -> list[Resource]:
         """Expose heavyweight artifacts via resources."""
@@ -621,12 +625,16 @@ async def serve() -> None:
             else:
                 raise MCPError(code=INVALID_PARAMS, message=f"Unknown tool: {name}")
         except ValidationError as e:
-            return [create_error_content(INVALID_PARAMS, str(e))]
+            # Wrap ErrorContent in TextContent to satisfy Pydantic Union validation
+            error_payload = create_error_content(INVALID_PARAMS, str(e))
+            return [TextContent(type="text", text=json.dumps({'error': error_payload.error.model_dump()}))]
         except MCPError as e:
-            return [create_error_content(e.code, e.message)]
+            error_payload = create_error_content(e.code, e.message)
+            return [TextContent(type="text", text=json.dumps({'error': error_payload.error.model_dump()}))]
         except Exception as e:
             logger.exception("Unhandled error in call_tool")
-            return [create_error_content(INTERNAL_ERROR, str(e))]
+            error_payload = create_error_content(INTERNAL_ERROR, str(e))
+            return [TextContent(type="text", text=json.dumps({'error': error_payload.error.model_dump()}))]
 
     @server.list_tools()
     async def list_tools() -> list[Tool]:
