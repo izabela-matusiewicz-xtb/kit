@@ -3,7 +3,7 @@
 
 <img src="https://github.com/user-attachments/assets/7bdfa9c6-94f0-4ee0-9fdd-cbd8bd7ec060" width="360">
 
-`kit` is a modular, production-grade Python toolkit for codebase mapping, symbol extraction, code search, and building LLM-powered developer tools, agents, and workflows. 
+`kit` is a production-ready Python toolkit for codebase mapping, symbol extraction, code search, and building LLM-powered developer tools, agents, and workflows. 
 
 Use `kit` to build things like code reviewers, code generators, even IDEs, all enriched with the right code context.
 
@@ -47,7 +47,7 @@ print(repo.extract_symbols('src/main.py'))
 
 ## Key Features & Capabilities
 
-`kit` helps your apps and agents understand and interact with codebases, with the core components to build your own AI-powered developer tools. Things you can do:
+`kit` helps your apps and agents understand and interact with codebases, with components to build your own AI-powered developer tools.
 
 *   **Explore Code Structure:**
     *   High-level view with `repo.get_file_tree()` to list all files and directories.
@@ -67,9 +67,7 @@ print(repo.extract_symbols('src/main.py'))
 
 *   **Analyze Code Dependencies:**
     *   Map import relationships between modules using `repo.get_dependency_analyzer()` to understand your codebase structure.
-    *   Detect circular dependencies and visualize module relationships with `analyzer.find_cycles()` and `analyzer.visualize_dependencies()`.
     *   Generate dependency reports and LLM-friendly context with `analyzer.generate_dependency_report()` and `analyzer.generate_llm_context()`.
-    *   Currently supports Python and Terraform (HCL), with a flexible architecture for adding more languages.
 
 *   **And much more...** `kit` also offers capabilities for semantic search on raw code, building custom context for LLMs, and more.
 
@@ -91,5 +89,5 @@ MIT License
 
 ## Contributing
 
-We welcome contributions! Please see our [Roadmap](https://kit.cased.com/development/roadmap) for project directions.
+Please see our [Roadmap](https://kit.cased.com/development/roadmap) for project directions.
 
