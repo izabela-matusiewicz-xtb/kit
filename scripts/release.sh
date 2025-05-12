@@ -109,14 +109,32 @@ echo "Building package..."
 # Clean previous builds
 rm -rf dist/
 
-# Use system Python directly to ensure build and twine are found
-# We use /usr/bin/env to ensure it's found regardless of the user's PATH
-/usr/bin/env python -m build
+# Check if we're in a virtual environment and temporarily deactivate it for build/twine
+if [[ -n "$VIRTUAL_ENV" ]]; then
+    echo "Temporarily deactivating virtual environment for build processes..."
+    # Save the current VIRTUAL_ENV path
+    SAVED_VIRTUAL_ENV="$VIRTUAL_ENV"
+    # Deactivate the virtual environment
+    PATH=$(echo "$PATH" | sed -e "s|$VIRTUAL_ENV/bin:||g")
+    unset VIRTUAL_ENV
+    # Set PYTHONPATH to ensure the package can still be found
+    export PYTHONPATH="$(pwd)"
+fi
+
+# Run build with system Python
+python -m build
 
 # --- Publish to PyPI ---
 echo ""
 echo "Publishing package to PyPI..."
-/usr/bin/env python -m twine upload dist/*
+python -m twine upload dist/*
+
+# Restore virtual environment if it was active
+if [[ -n "$SAVED_VIRTUAL_ENV" ]]; then
+    echo "Restoring virtual environment..."
+    export VIRTUAL_ENV="$SAVED_VIRTUAL_ENV"
+    export PATH="$VIRTUAL_ENV/bin:$PATH"
+fi
 
 # --- Tagging and Pushing Git Tag ---
 echo ""
