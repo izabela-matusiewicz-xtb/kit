@@ -484,18 +484,62 @@ class KitServerLogic:
         """Expose heavyweight artifacts via resources."""
         return [
             Resource(
-                uri=cast(AnyUrl, "/repos/{repo_id}/files/{file_path}"),
+                uri=cast(AnyUrl, "mcp://file/{repo_id}/{file_path}"),
                 name="file",
                 description="Raw file contents",
                 mimeType="text/plain",
             ),
             Resource(
-                uri=cast(AnyUrl, "/repos/{repo_id}/tree"),
+                uri=cast(AnyUrl, "mcp://tree/{repo_id}"),
                 name="tree",
                 description="Serialized repo tree JSON",
                 mimeType="application/json",
             ),
         ]
+
+    def list_resource_templates(self) -> list[types.ResourceTemplate]:  # type: ignore[name-defined]
+        """Return RFC6570-style templates so clients can construct URIs."""
+        from mcp.types import ResourceTemplate
+
+        return [
+            ResourceTemplate(
+                uriTemplate="mcp://file/{repo_id}/{file_path}",
+                name="file",
+                description="Raw file contents",
+                mimeType="text/plain",
+            ),
+            ResourceTemplate(
+                uriTemplate="mcp://tree/{repo_id}",
+                name="tree",
+                description="Serialized repo tree JSON",
+                mimeType="application/json",
+            ),
+        ]
+
+    def read_resource(self, uri: str) -> tuple[str, str]:
+        """Return (mime_type, text) for the requested resource uri."""
+        from urllib.parse import urlparse, unquote
+
+        parsed = urlparse(uri)
+        if parsed.scheme != "mcp":
+            raise MCPError(INVALID_PARAMS, "Unsupported URI scheme")
+
+        path_parts = [p for p in parsed.path.split("/") if p]
+        if not path_parts:
+            raise MCPError(INVALID_PARAMS, "Invalid MCP URI")
+
+        kind = path_parts[0]
+        if kind == "file" and len(path_parts) >= 3:
+            repo_id = path_parts[1]
+            file_path = "/".join(path_parts[2:])
+            content = self.get_file_content(repo_id, unquote(file_path))
+            return "text/plain", content
+        elif kind == "tree" and len(path_parts) == 2:
+            repo_id = path_parts[1]
+            tree = self.get_file_tree(repo_id)
+            return "application/json", json.dumps(tree)
+        else:
+            raise MCPError(INVALID_PARAMS, "Unknown resource URI")
 
     def analyze_dependencies(self, repo_id: str, file_path: Optional[str], depth: int) -> Any:
         analyzer = self.get_analyzer(repo_id, "dependency_analyzer")
@@ -600,13 +644,25 @@ async def serve() -> None:
             logger.exception("ERROR: Failed in list_prompts method")
             raise
 
-    @server.list_resources()
-    async def _list_resources() -> list[Resource]:
-        # Added try-except for robust logging
+    @server.list_resource_templates()
+    async def _list_resource_templates() -> list[types.ResourceTemplate]:  # type: ignore[name-defined]
         try:
-            return logic.list_resources()
+            return logic.list_resource_templates()
         except Exception as e:
-            logger.exception("ERROR: Failed in _list_resources method")
+            logger.exception("ERROR: Failed in list_resource_templates")
+            raise
+
+    @server.read_resource()
+    async def _read_resource(uri: AnyUrl):  # type: ignore[name-defined]
+        try:
+            mime, text = logic.read_resource(str(uri))
+            from mcp.server.lowlevel.helper_types import ReadResourceContents
+            from mcp.types import TextResourceContents
+            return TextResourceContents(uri=uri, mimeType=mime, text=text)
+        except MCPError as e:
+            raise
+        except Exception as e:
+            logger.exception("ERROR: Failed in read_resource")
             raise
 
     @server.get_prompt()
@@ -626,14 +682,26 @@ async def serve() -> None:
     try:
         options = server.create_initialization_options()
         logger.info("MCP initialization options created successfully.")
+        # Print to *raw* stderr so that hosts which capture only raw stderr (like
+        # Claude Desktop) always see at least one line confirming startup.
+        print("kit-mcp: initialization options ready", file=sys.stderr, flush=True)
     except Exception as e:
         logger.exception("ERROR: Failed to create MCP initialization options")
-        # Depending on server.create_initialization_options behavior,
-        # we might need to sys.exit(1) or raise if it doesn't propagate
         raise # Re-raise to stop the server if options are critical
 
     kit_version = KIT_VERSION
     logger.info("Starting MCP server (version: %s) run loop with stdio...", kit_version)
-    
+    print(f"kit-mcp: starting run loop (kit {kit_version})", file=sys.stderr, flush=True)
+
     async with stdio_server() as (read_stream, write_stream):
-        await server.run(read_stream, write_stream, options)
+        try:
+            await server.run(read_stream, write_stream, options, raise_exceptions=True)
+        except Exception as e:
+            # Print trace to stderr for hosts that don't capture Python logging
+            import traceback, io
+            buf = io.StringIO()
+            traceback.print_exc(file=buf)
+            print("kit-mcp: fatal error\n" + buf.getvalue(), file=sys.stderr, flush=True)
+            buf.close()
+            logger.exception("Fatal error in server.run: %s", e)
+            raise

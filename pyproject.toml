@@ -32,6 +32,9 @@ dependencies = [
 [project.urls]
 Homepage = "https://github.com/cased/kit"
 
+[project.scripts]
+kit-mcp = "kit.mcp:main"
+
 [tool.setuptools]
 package-dir = {"" = "src"}
 
@@ -57,9 +60,6 @@ testpaths = [
 
 [tool.mypy]
 ignore_missing_imports = true
-
-[project.scripts]
-kit-mcp = "kit.mcp:main"
 
 [project.optional-dependencies]
 dev = [

@@ -80,6 +80,26 @@ MCP enables AI tools to understand and interact with your codebase through a loc
 - Code search and navigation
 - File tree exploration
 
+Add a stanza like this to your MCP-compatabile tool:
+
+```jsonc
+{
+  "mcpServers": {
+    "kit-mcp": {
+      "command": "python",
+      "args": ["-m", "kit.mcp"]
+    }
+  }
+}
+```
+
+The `python` executable invoked must be the one where `cased-kit` is installed.
+If you see `ModuleNotFoundError: No module named 'kit'`, ensure the Python
+interpreter your MCP client is using is the correct one.
+
+
+## Documentation
+
 Explore the **[Full Documentation](https://kit.cased.com)** for detailed usage, advanced features, and practical examples.
 
 
