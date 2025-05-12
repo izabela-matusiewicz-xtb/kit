@@ -71,12 +71,29 @@ if [ "${TWINE_USERNAME}" != "__token__" ]; then
 fi
 
 # 6. Check if build and twine are installed
-if ! command -v python &> /dev/null || ! python -m build --version &> /dev/null || ! python -m twine --version &> /dev/null; then
-    echo "Error: Python, 'build' or 'twine' command not found or not working."
-    echo "Please ensure Python is installed and you have the necessary packages:"
-    echo "  python -m pip install --upgrade pip build twine"
+# Use separate checks for build and twine to provide more specific feedback
+echo "Checking for required build tools..."
+if ! command -v python &> /dev/null; then
+    echo "Error: Python command not found."
+    echo "Please ensure Python is installed and in your PATH."
     exit 1
 fi
+
+# Check build package
+if ! pip show build &> /dev/null; then
+    echo "Error: 'build' package is not installed."
+    echo "Please install it with: pip install build"
+    exit 1
+fi
+
+# Check twine package 
+if ! pip show twine &> /dev/null; then
+    echo "Error: 'twine' package is not installed."
+    echo "Please install it with: pip install twine" 
+    exit 1
+fi
+
+echo "All required packages are installed."
 
 echo ""
 echo "Release pre-flight checks passed for version ${VERSION}."
