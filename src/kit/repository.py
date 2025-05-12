@@ -72,12 +72,27 @@ class Repository:
             # Optionally: git pull to update
             return repo_path
         
-        clone_url = url
-        
+        # Use GIT_ASKPASS so the token never appears in argv / process list
+        env = os.environ.copy()
+        clone_cmd = ["git", "clone", "--depth=1", url, str(repo_path)]
+
         if token:
-            # Insert token for private repos
-            clone_url = url.replace("https://", f"https://{token}@")
-        subprocess.run(["git", "clone", "--depth=1", clone_url, str(repo_path)], check=True)
+            # Create a temporary ask-pass helper that echoes the token once
+            askpass_script = tempfile.NamedTemporaryFile("w", delete=False)
+            askpass_script.write("#!/bin/sh\necho \"%s\"\n" % token)
+            askpass_script.flush()
+            os.chmod(askpass_script.name, 0o700)
+            env["GIT_ASKPASS"] = askpass_script.name
+            env["GIT_TERMINAL_PROMPT"] = "0"  # disable interactive prompts
+
+        try:
+            subprocess.run(clone_cmd, env=env, check=True)
+        finally:
+            if token:
+                try:
+                    os.unlink(askpass_script.name)
+                except OSError:
+                    pass
         return repo_path
 
     def get_file_tree(self) -> List[Dict[str, Any]]:
@@ -92,14 +107,28 @@ class Repository:
     def extract_symbols(self, file_path: Optional[str] = None) -> List[Dict[str, Any]]:
         """
         Extracts symbols from the repository.
+        If file_path is provided, extracts symbols only from that specific file (on-demand).
+        If file_path is None, scans the entire repository (if necessary) and returns all symbols found.
         
         Args:
-            file_path (Optional[str], optional): The path to the file to extract symbols from. Defaults to None.
+            file_path (Optional[str], optional): The path to the file to extract symbols from,
+                                               relative to the repository root. Defaults to None (all files).
         
         Returns:
             List[Dict[str, Any]]: A list of dictionaries representing the extracted symbols.
         """
-        return self.mapper.extract_symbols(file_path)  # type: ignore[arg-type]
+        if file_path is not None:
+            return self.mapper.extract_symbols(str(file_path))
+        else:
+            # Extract symbols from all relevant files by getting the full repo map.
+            # self.mapper.get_repo_map() ensures scan_repo() is called if needed.
+            repo_map = self.mapper.get_repo_map()
+            all_symbols: List[Dict[str, Any]] = []
+            # The symbol map stores symbols keyed by absolute file path
+            # The values are lists of symbol dicts for that file
+            for file_abs_path_str, symbols_in_file in repo_map.get("symbols", {}).items():
+                all_symbols.extend(symbols_in_file)
+            return all_symbols
 
     def search_text(self, query: str, file_pattern: str = "*") -> List[Dict[str, Any]]:
         """
