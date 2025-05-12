@@ -15,15 +15,7 @@ Kit provides a MCP server implementation that exposes its code intelligence capa
 
 ## Setup
 
-1. Install kit with MCP support:
-
-```bash
-pip install cased-kit
-```
-
-This will make `kit-mcp` available to you.
-
-2. Configure your MCP-compatible client by adding this to your settings:
+1. After installing `kit, configure your MCP-compatible client by adding this to your settings:
 
 ```json
 {
@@ -37,3 +29,5 @@ This will make `kit-mcp` available to you.
   }
 }
 ```
+
+That's it!
