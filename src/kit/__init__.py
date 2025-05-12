@@ -3,7 +3,7 @@ A modular toolkit for LLM-powered codebase understanding.
 """
 
 __author__ = "cased"
-__version__ = "0.1.4"
+__version__ = "0.2.0"
 
 from .repository import Repository
 from .repo_mapper import RepoMapper
