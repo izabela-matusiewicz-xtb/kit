@@ -50,14 +50,15 @@ export default defineConfig({
             "tutorials/recipes",
           ],
         },
-        // Remove the dedicated Recipes link, it will be picked up by Tutorials autogeneration
-        // {
-        // 	label: ' Recipes',
-        // 	link: '/recipes', // Path to src/content/docs/recipes.mdx
-        // },
         {
           label: " API Reference",
           autogenerate: { directory: "api" },
+        },
+        {
+          label: " MCP",
+          items: [
+            "mcp/using-kit-with-mcp",
+          ],
         },
         {
           label: " Development",

@@ -27,7 +27,9 @@ When using kit as an MCP server, you gain access to:
 pip install cased-kit
 ```
 
-2. Configure your IDE (e.g. Windsurf) by adding this to your settings:
+This will make `kit-mcp` available to you.
+
+2. Configure your MCP-compatible client by adding this to your settings:
 
 ```json
 {
