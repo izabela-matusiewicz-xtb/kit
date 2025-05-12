@@ -474,6 +474,11 @@ class KitServerLogic:
                     raise MCPError(code=INVALID_PARAMS, message=f"Unknown prompt: {name}")
         except KeyError as e:
             raise MCPError(code=INVALID_PARAMS, message=f"Missing required argument: {e.args[0]}")
+        except ValidationError as e:
+            missing = next((err.get("loc", [None])[0] for err in e.errors() if err.get("type") == "missing"), None)
+            if missing:
+                raise MCPError(code=INVALID_PARAMS, message=f"Missing required argument: {missing}")
+            raise MCPError(code=INVALID_PARAMS, message=str(e))
 
     def list_resources(self) -> list[Resource]:
         """Expose heavyweight artifacts via resources."""
