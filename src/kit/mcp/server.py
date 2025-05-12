@@ -136,7 +136,6 @@ class GetFileTreeParams(BaseModel):
 class SemanticSearchParams(BaseModel):
     repo_id: str
     query: str
-    limit: Optional[int] = 10
 
 
 class GetDocumentationParams(BaseModel):
@@ -268,11 +267,11 @@ class KitServerLogic:
                 )
         return self._analyzers[repo_id][analyzer_name]
 
-    def semantic_search(self, repo_id: str, query: str, limit: int) -> Any:
+    def semantic_search(self, repo_id: str, query: str) -> Any:
         analyzer = self.get_analyzer(repo_id, "vector_searcher")
         if analyzer is None:
             raise MCPError(code=INTERNAL_ERROR, message="Vector search not available")
-        return analyzer.search(query, limit=limit)
+        return analyzer.search(query)
 
     def get_documentation(
         self, repo_id: str, symbol_name: Optional[str], file_path: Optional[str]
@@ -388,7 +387,6 @@ class KitServerLogic:
             arguments=[
                 PromptArgument(name="repo_id", description="ID of the repository", required=True),
                 PromptArgument(name="query", description="Semantic query", required=True),
-                PromptArgument(name="limit", description="Max number of results", required=False),
             ],
         ),
         Prompt(
@@ -455,8 +453,7 @@ class KitServerLogic:
                     return GetPromptResult(description="File tree", messages=[PromptMessage(role="user", content=TextContent(type="text", text=f"/repos/{gft_args.repo_id}/tree"))])
                 case "semantic_search":
                     ss_args = SemanticSearchParams(**arguments)
-                    limit_val = ss_args.limit if ss_args.limit is not None else 10
-                    results = self.semantic_search(ss_args.repo_id, ss_args.query, limit_val)
+                    results = self.semantic_search(ss_args.repo_id, ss_args.query)
                     return GetPromptResult(description="Semantic search results", messages=[PromptMessage(role="user", content=TextContent(type="text", text=json.dumps(results, indent=2)))])
                 case "get_documentation":
                     gd_args = GetDocumentationParams(**arguments)
@@ -607,8 +604,7 @@ async def serve() -> None:
                 return [TextContent(type="text", text=f"/repos/{gft_args.repo_id}/tree")]
             elif name == "semantic_search":
                 ss_args = SemanticSearchParams(**arguments)
-                limit_val = ss_args.limit if ss_args.limit is not None else 10
-                results = logic.semantic_search(ss_args.repo_id, ss_args.query, limit_val)
+                results = logic.semantic_search(ss_args.repo_id, ss_args.query)
                 return [TextContent(type="text", text=json.dumps(results, indent=2))]
             elif name == "get_documentation":
                 gd_args = GetDocumentationParams(**arguments)
