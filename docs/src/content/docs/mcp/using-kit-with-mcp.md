@@ -17,6 +17,10 @@ Kit provides a MCP server implementation that exposes its code intelligence capa
 
 1. After installing `kit`, configure your MCP-compatible client by adding a stanza like this to your settings:
 
+Available environment variables for the `env` section:
+- `OPENAI_API_KEY`
+- `KIT_MCP_LOG_LEVEL`
+
 ```json
 {
   "mcpServers": {
