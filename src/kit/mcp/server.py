@@ -25,18 +25,44 @@ from mcp.types import (
     INTERNAL_ERROR,
 )
 
-# MCP SDK versions before 0.2 don't export ErrorContent / ResourceContent.
+# Newer releases renamed ``ResourceContent`` ➔ ``EmbeddedResource``.  Import
+# them independently so the absence of one does not mask the other.
+#
+# The strategy is:
+#   1. Prefer ``EmbeddedResource`` and alias it to ``ResourceContent`` so we can
+#      continue to refer to a single symbol in the rest of the module.
+#   2. Fall back to an actual ``ResourceContent`` if the older name still
+#      exists.
+#   3. As a last resort, synthesize a minimal stub so unit-tests can still
+#      import the module even when the MCP SDK is unavailable.
+
+# ---------------------------------------------------------------------------
+# ResourceContent (aka EmbeddedResource)
+# ---------------------------------------------------------------------------
+
 try:
-    from mcp.types import ErrorContent, ResourceContent  # type: ignore
-except ImportError:  # pragma: no cover
+    from mcp.types import EmbeddedResource as ResourceContent  # type: ignore
+except ImportError:  # pragma: no cover – older SDK
+    try:
+        from mcp.types import ResourceContent  # type: ignore
+    except ImportError:
+        from pydantic import BaseModel
+
+        class ResourceContent(BaseModel):  # type: ignore
+            resource: str
+            uri: str
+
+# ---------------------------------------------------------------------------
+# ErrorContent (removed in newer specs)
+# ---------------------------------------------------------------------------
+
+try:
+    from mcp.types import ErrorContent  # type: ignore
+except ImportError:  # pragma: no cover – define minimal stub
     from pydantic import BaseModel
 
-    class ErrorContent(BaseModel):
+    class ErrorContent(BaseModel):  # type: ignore
         error: ErrorData
-
-    class ResourceContent(BaseModel):
-        resource: str
-        uri: str
 
 from pydantic import BaseModel, ValidationError
 
@@ -485,7 +511,7 @@ async def serve() -> None:
                 args = GetFileContentParams(**arguments)
                 # Validate path access but avoid sending full file in-band
                 logic.get_file_content(args.repo_id, args.file_path)
-                return [ResourceContent(resource="file", uri=f"/repos/{args.repo_id}/files/{args.file_path}")]
+                return [TextContent(type="text", text=f"/repos/{args.repo_id}/files/{args.file_path}")]
             elif name == "extract_symbols":
                 args = ExtractSymbolsParams(**arguments)
                 symbols = logic.extract_symbols(
@@ -500,9 +526,9 @@ async def serve() -> None:
                 return [TextContent(type="text", text=json.dumps(usages, indent=2))]
             elif name == "get_file_tree":
                 args = GetFileTreeParams(**arguments)
-                # Return resource reference instead of full JSON
+                # Return URI reference instead of full JSON (avoid large payloads)
                 logic.get_file_tree(args.repo_id)
-                return [ResourceContent(resource="tree", uri=f"/repos/{args.repo_id}/tree")]
+                return [TextContent(type="text", text=f"/repos/{args.repo_id}/tree")]
             elif name == "semantic_search":
                 args = SemanticSearchParams(**arguments)
                 results = logic.semantic_search(args.repo_id, args.query, args.limit)
