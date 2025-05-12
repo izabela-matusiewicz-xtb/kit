@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, cast
 from pathlib import Path
 import logging
 import json
@@ -19,11 +19,14 @@ from mcp.types import (
     PromptArgument,
     PromptMessage,
     Resource,
+    ToolAnnotations,
     TextContent,
     Tool,
     INVALID_PARAMS,
     INTERNAL_ERROR,
 )
+
+from pydantic.networks import AnyUrl
 
 # Newer releases renamed ``ResourceContent`` ➔ ``EmbeddedResource``.  Import
 # them independently so the absence of one does not mask the other.
@@ -71,6 +74,7 @@ from ..vector_searcher import VectorSearcher
 from ..docstring_indexer import DocstringIndexer
 from ..summaries import Summarizer
 from ..tree_sitter_symbol_extractor import TreeSitterSymbolExtractor
+from .. import __version__ as KIT_VERSION
 
 
 logging.basicConfig(
@@ -82,12 +86,12 @@ logging.basicConfig(
 logger = logging.getLogger("kit-mcp")
 
 
-def create_error_content(code: str, message: str) -> ErrorContent:
+def create_error_content(code: int, message: str) -> ErrorContent:
     return ErrorContent(error=ErrorData(code=code, message=message))
 
 
 class MCPError(Exception):
-    def __init__(self, code: str, message: str):
+    def __init__(self, code: int, message: str):
         self.code = code
         self.message = message
         super().__init__(message)
@@ -172,7 +176,7 @@ class KitServerLogic:
         except Exception as e:
             raise MCPError(code=INVALID_PARAMS, message=str(e))
 
-    def search_code(self, repo_id: str, query: str, pattern: str = "*.py") -> list[str]:
+    def search_code(self, repo_id: str, query: str, pattern: str = "*.py") -> list[dict[str, Any]]:
         repo = self.get_repo(repo_id)
         try:
             return repo.search_text(query, file_pattern=pattern)
@@ -250,13 +254,14 @@ class KitServerLogic:
                     embed_fn = lambda sents: [[0.0] * 768 for _ in sents]
                 self._analyzers[repo_id][analyzer_name] = VectorSearcher(repo, embed_fn=embed_fn)
             elif analyzer_name == "docstring_indexer":
-                self._analyzers[repo_id][analyzer_name] = DocstringIndexer(repo)
+                # DocstringIndexer requires a Summarizer instance
+                summarizer = Summarizer(repo)
+                self._analyzers[repo_id][analyzer_name] = DocstringIndexer(repo, summarizer)
             elif analyzer_name == "code_summarizer":
                 self._analyzers[repo_id][analyzer_name] = Summarizer(repo)
             elif analyzer_name == "symbol_extractor":
-                self._analyzers[repo_id][analyzer_name] = TreeSitterSymbolExtractor(
-                    repo
-                )
+                # TreeSitterSymbolExtractor has a static API; no init args.
+                self._analyzers[repo_id][analyzer_name] = TreeSitterSymbolExtractor()
             else:
                 raise MCPError(
                     code=INVALID_PARAMS, message=f"Unknown analyzer: {analyzer_name}"
@@ -312,17 +317,17 @@ class KitServerLogic:
             raise MCPError(code=INVALID_PARAMS, message=str(e))
     
     def list_tools(self) -> list[Tool]:
-        ro = {"readOnlyHint": True}
+        ro_ann = ToolAnnotations(readOnlyHint=True)
         return [
-        Tool(name="open_repository", description="Open a repository and return its ID", inputSchema=OpenRepoParams.model_json_schema()),
-        Tool(name="search_code", description="Search text in a repository", inputSchema=SearchParams.model_json_schema(), **ro),
-        Tool(name="get_file_content", description="Get file contents", inputSchema=GetFileContentParams.model_json_schema(), **ro),
-        Tool(name="extract_symbols", description="Extract symbols from a file", inputSchema=ExtractSymbolsParams.model_json_schema(), **ro),
-        Tool(name="find_symbol_usages", description="Find symbol usages", inputSchema=FindSymbolUsagesParams.model_json_schema(), **ro),
-        Tool(name="get_file_tree", description="Return repo file structure", inputSchema=GetFileTreeParams.model_json_schema(), **ro),
-        Tool(name="semantic_search", description="Semantic similarity search", inputSchema=SemanticSearchParams.model_json_schema(), **ro),
-        Tool(name="get_documentation", description="Fetch docstrings / docs", inputSchema=GetDocumentationParams.model_json_schema(), **ro),
-        Tool(name="get_code_summary", description="Get a summary of code for a given file. If symbol_name is provided, also attempts to summarize it as a function and class.", inputSchema=GetCodeSummaryParams.model_json_schema()),
+        Tool(name="open_repository", description="Open a repository and return its ID", inputSchema=OpenRepoParams.model_json_schema(), annotations=ro_ann),
+        Tool(name="search_code", description="Search text in a repository", inputSchema=SearchParams.model_json_schema(), annotations=ro_ann),
+        Tool(name="get_file_content", description="Get file contents", inputSchema=GetFileContentParams.model_json_schema(), annotations=ro_ann),
+        Tool(name="extract_symbols", description="Extract symbols from a file", inputSchema=ExtractSymbolsParams.model_json_schema(), annotations=ro_ann),
+        Tool(name="find_symbol_usages", description="Find symbol usages", inputSchema=FindSymbolUsagesParams.model_json_schema(), annotations=ro_ann),
+        Tool(name="get_file_tree", description="Return repo file structure", inputSchema=GetFileTreeParams.model_json_schema(), annotations=ro_ann),
+        Tool(name="semantic_search", description="Semantic similarity search", inputSchema=SemanticSearchParams.model_json_schema(), annotations=ro_ann),
+        Tool(name="get_documentation", description="Fetch docstrings / docs", inputSchema=GetDocumentationParams.model_json_schema(), annotations=ro_ann),
+        Tool(name="get_code_summary", description="Get a summary of code for a given file. If symbol_name is provided, also attempts to summarize it as a function and class.", inputSchema=GetCodeSummaryParams.model_json_schema(), annotations=ro_ann),
     ]
 
     def list_prompts(self) -> list[Prompt]:
@@ -413,9 +418,8 @@ class KitServerLogic:
         try:
             match name:
                 case "open_repo":
-                    path_or_url = arguments["path_or_url"]
-                    github_token = arguments.get("github_token")
-                    repo_id = self.open_repository(path_or_url, github_token)
+                    open_args = OpenRepoParams(**arguments)
+                    repo_id = self.open_repository(open_args.path_or_url, open_args.github_token)
                     repo = self._repos[repo_id]
                     return GetPromptResult(
                         description=f"Repository opened with ID: {repo_id}",
@@ -424,28 +428,47 @@ class KitServerLogic:
                         ],
                     )
                 case "search_repo":
-                    results = self.search_code(arguments["repo_id"], arguments["query"], arguments.get("pattern", "*.py"))
+                    search_args = SearchParams(**arguments)
+                    results = self.search_code(search_args.repo_id, search_args.query, search_args.pattern)
                     return GetPromptResult(description="Search results", messages=[PromptMessage(role="user", content=TextContent(type="text", text=str(results)))])
                 case "get_file_content":
-                    content = self.get_file_content(arguments["repo_id"], arguments["file_path"])
-                    return GetPromptResult(description="File content", messages=[PromptMessage(role="user", content=TextContent(type="text", text=content))])
+                    gfc_args = GetFileContentParams(**arguments)
+                    # Validate path access but avoid sending full file in-band
+                    self.get_file_content(gfc_args.repo_id, gfc_args.file_path)
+                    return GetPromptResult(description="File content", messages=[PromptMessage(role="user", content=TextContent(type="text", text=f"/repos/{gfc_args.repo_id}/files/{gfc_args.file_path}"))])
                 case "extract_symbols":
-                    symbols = self.extract_symbols(arguments["repo_id"], arguments["file_path"], arguments.get("symbol_type"))
+                    es_args = ExtractSymbolsParams(**arguments)
+                    symbols = self.extract_symbols(
+                        es_args.repo_id, es_args.file_path, es_args.symbol_type
+                    )
                     return GetPromptResult(description="Extracted symbols", messages=[PromptMessage(role="user", content=TextContent(type="text", text=json.dumps(symbols, indent=2)))])
                 case "find_symbol_usages":
-                    usages = self.find_symbol_usages(arguments["repo_id"], arguments["symbol_name"], arguments.get("file_path"), arguments.get("symbol_type"))
+                    fu_args = FindSymbolUsagesParams(**arguments)
+                    usages = self.find_symbol_usages(
+                        fu_args.repo_id, fu_args.symbol_name, fu_args.file_path, fu_args.symbol_type
+                    )
                     return GetPromptResult(description="Symbol usages", messages=[PromptMessage(role="user", content=TextContent(type="text", text=json.dumps(usages, indent=2)))])
                 case "get_file_tree":
-                    tree = self.get_file_tree(arguments["repo_id"])
-                    return GetPromptResult(description="File tree", messages=[PromptMessage(role="user", content=TextContent(type="text", text=json.dumps(tree, indent=2)))])
+                    gft_args = GetFileTreeParams(**arguments)
+                    # Return URI reference instead of full JSON (avoid large payloads)
+                    self.get_file_tree(gft_args.repo_id)
+                    return GetPromptResult(description="File tree", messages=[PromptMessage(role="user", content=TextContent(type="text", text=f"/repos/{gft_args.repo_id}/tree"))])
                 case "semantic_search":
-                    results = self.semantic_search(arguments["repo_id"], arguments["query"], arguments.get("limit", 10))
+                    ss_args = SemanticSearchParams(**arguments)
+                    limit_val = ss_args.limit if ss_args.limit is not None else 10
+                    results = self.semantic_search(ss_args.repo_id, ss_args.query, limit_val)
                     return GetPromptResult(description="Semantic search results", messages=[PromptMessage(role="user", content=TextContent(type="text", text=json.dumps(results, indent=2)))])
                 case "get_documentation":
-                    docs = self.get_documentation(arguments["repo_id"], arguments.get("symbol_name"), arguments.get("file_path"))
+                    gd_args = GetDocumentationParams(**arguments)
+                    docs = self.get_documentation(
+                        gd_args.repo_id, gd_args.symbol_name, gd_args.file_path
+                    )
                     return GetPromptResult(description="Documentation", messages=[PromptMessage(role="user", content=TextContent(type="text", text=json.dumps(docs, indent=2)))])
                 case "get_code_summary":
-                    summary = self.get_code_summary(arguments["repo_id"], arguments["file_path"], arguments.get("symbol_name"))
+                    gcs_args = GetCodeSummaryParams(**arguments)
+                    summary = self.get_code_summary(
+                        gcs_args.repo_id, gcs_args.file_path, gcs_args.symbol_name
+                    )
                     return GetPromptResult(description="Code summary", messages=[PromptMessage(role="user", content=TextContent(type="text", text=json.dumps(summary, indent=2)))])
                 case _:
                     raise MCPError(code=INVALID_PARAMS, message=f"Unknown prompt: {name}")
@@ -456,16 +479,16 @@ class KitServerLogic:
         """Expose heavyweight artifacts via resources."""
         return [
             Resource(
+                uri=cast(AnyUrl, "/repos/{repo_id}/files/{file_path}"),
                 name="file",
                 description="Raw file contents",
-                uri_template="/repos/{repo_id}/files/{file_path}",
-                mime_type="text/plain",
+                mimeType="text/plain",
             ),
             Resource(
+                uri=cast(AnyUrl, "/repos/{repo_id}/tree"),
                 name="tree",
                 description="Serialized repo tree JSON",
-                uri_template="/repos/{repo_id}/tree",
-                mime_type="application/json",
+                mimeType="application/json",
             ),
         ]
 
@@ -492,7 +515,7 @@ class KitServerLogic:
         return requested
 
 async def serve() -> None:
-    server = Server("kit")
+    server: Server = Server("kit")
     logic = KitServerLogic()
 
 
@@ -500,49 +523,50 @@ async def serve() -> None:
     async def call_tool(name: str, arguments: dict) -> list[TextContent | ErrorContent | ResourceContent]:
         try:
             if name == "open_repository":
-                args = OpenRepoParams(**arguments)
-                repo_id = logic.open_repository(args.path_or_url, args.github_token)
+                open_args = OpenRepoParams(**arguments)
+                repo_id = logic.open_repository(open_args.path_or_url, open_args.github_token)
                 return [TextContent(type="text", text=repo_id)]
             elif name == "search_code":
-                args = SearchParams(**arguments)
-                results = logic.search_code(args.repo_id, args.query, args.pattern)
+                search_args = SearchParams(**arguments)
+                results = logic.search_code(search_args.repo_id, search_args.query, search_args.pattern)
                 return [TextContent(type="text", text=json.dumps(results, indent=2))]
             elif name == "get_file_content":
-                args = GetFileContentParams(**arguments)
+                gfc_args = GetFileContentParams(**arguments)
                 # Validate path access but avoid sending full file in-band
-                logic.get_file_content(args.repo_id, args.file_path)
-                return [TextContent(type="text", text=f"/repos/{args.repo_id}/files/{args.file_path}")]
+                logic.get_file_content(gfc_args.repo_id, gfc_args.file_path)
+                return [TextContent(type="text", text=f"/repos/{gfc_args.repo_id}/files/{gfc_args.file_path}")]
             elif name == "extract_symbols":
-                args = ExtractSymbolsParams(**arguments)
+                es_args = ExtractSymbolsParams(**arguments)
                 symbols = logic.extract_symbols(
-                    args.repo_id, args.file_path, args.symbol_type
+                    es_args.repo_id, es_args.file_path, es_args.symbol_type
                 )
                 return [TextContent(type="text", text=json.dumps(symbols, indent=2))]
             elif name == "find_symbol_usages":
-                args = FindSymbolUsagesParams(**arguments)
+                fu_args = FindSymbolUsagesParams(**arguments)
                 usages = logic.find_symbol_usages(
-                    args.repo_id, args.symbol_name, args.file_path, args.symbol_type
+                    fu_args.repo_id, fu_args.symbol_name, fu_args.file_path, fu_args.symbol_type
                 )
                 return [TextContent(type="text", text=json.dumps(usages, indent=2))]
             elif name == "get_file_tree":
-                args = GetFileTreeParams(**arguments)
+                gft_args = GetFileTreeParams(**arguments)
                 # Return URI reference instead of full JSON (avoid large payloads)
-                logic.get_file_tree(args.repo_id)
-                return [TextContent(type="text", text=f"/repos/{args.repo_id}/tree")]
+                logic.get_file_tree(gft_args.repo_id)
+                return [TextContent(type="text", text=f"/repos/{gft_args.repo_id}/tree")]
             elif name == "semantic_search":
-                args = SemanticSearchParams(**arguments)
-                results = logic.semantic_search(args.repo_id, args.query, args.limit)
+                ss_args = SemanticSearchParams(**arguments)
+                limit_val = ss_args.limit if ss_args.limit is not None else 10
+                results = logic.semantic_search(ss_args.repo_id, ss_args.query, limit_val)
                 return [TextContent(type="text", text=json.dumps(results, indent=2))]
             elif name == "get_documentation":
-                args = GetDocumentationParams(**arguments)
+                gd_args = GetDocumentationParams(**arguments)
                 docs = logic.get_documentation(
-                    args.repo_id, args.symbol_name, args.file_path
+                    gd_args.repo_id, gd_args.symbol_name, gd_args.file_path
                 )
                 return [TextContent(type="text", text=json.dumps(docs, indent=2))]
             elif name == "get_code_summary":
-                args = GetCodeSummaryParams(**arguments)
+                gcs_args = GetCodeSummaryParams(**arguments)
                 summary = logic.get_code_summary(
-                    args.repo_id, args.file_path, args.symbol_name
+                    gcs_args.repo_id, gcs_args.file_path, gcs_args.symbol_name
                 )
                 return [TextContent(type="text", text=json.dumps(summary, indent=2))]
             else:
@@ -603,6 +627,8 @@ async def serve() -> None:
         # we might need to sys.exit(1) or raise if it doesn't propagate
         raise # Re-raise to stop the server if options are critical
 
-    logger.info("Starting MCP server run loop with stdio...")
+    kit_version = KIT_VERSION
+    logger.info("Starting MCP server (version: %s) run loop with stdio...", kit_version)
+    
     async with stdio_server() as (read_stream, write_stream):
         await server.run(read_stream, write_stream, options)

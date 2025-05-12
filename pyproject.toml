@@ -26,7 +26,7 @@ dependencies = [
     "mypy",
     "ruff",
     "black",
-    "mcp>=1.8.0"
+    "mcp==1.8.0"
 ]
 
 [project.urls]
