@@ -1,11 +1,14 @@
 import { defineConfig } from "astro/config";
 import starlight from "@astrojs/starlight";
+import starlightLLMsTXT from "starlight-llms-txt";
 
 // https://astro.build/config
 export default defineConfig({
+  site: "https://kit.cased.com",
   integrations: [
     starlight({
       title: "kit ",
+      plugins: [starlightLLMsTXT()],
       social: [
         {
           icon: "github",
