@@ -4,6 +4,7 @@ from typing import Any, Dict, List, Optional
 try:
     import chromadb
     from chromadb.config import Settings
+    from chromadb import PersistentClient
 except ImportError:
     chromadb = None  # type: ignore[assignment]
 
@@ -35,7 +36,7 @@ class ChromaDBBackend(VectorDBBackend):
         if chromadb is None:
             raise ImportError("chromadb is not installed. Run 'pip install chromadb'.")
         self.persist_dir = persist_dir
-        self.client = chromadb.Client(Settings(persist_directory=persist_dir))
+        self.client = PersistentClient(path=self.persist_dir)
 
         final_collection_name = collection_name
         if final_collection_name is None:

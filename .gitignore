@@ -55,5 +55,6 @@ coverage.xml
 .DS_Store
 .vercel
 
-# Kit specific
-.kit/docstring_db/
+# Kit specific cache and data directory
+.kit/
+# .kit/docstring_db/ # Covered by .kit/
