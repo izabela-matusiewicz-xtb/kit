@@ -218,6 +218,7 @@ class TerraformDependencyAnalyzer(DependencyAnalyzer):
             file_path: Path to the file containing this node
         """
         if node_id not in self.dependency_graph:
+            # Node doesn't exist yet – add with provided details.
             self.dependency_graph[node_id] = {
                 "category": node_category,
                 "type": node_type,
@@ -225,6 +226,10 @@ class TerraformDependencyAnalyzer(DependencyAnalyzer):
                 "path": file_path,
                 "dependencies": set(),
             }
+        else:
+            # Node exists – make sure we don't lose file path information.
+            if file_path and not self.dependency_graph[node_id].get("path"):
+                self.dependency_graph[node_id]["path"] = file_path
 
     def _find_dependencies(self, source_id: str, config: Any):
         """
@@ -335,8 +340,17 @@ class TerraformDependencyAnalyzer(DependencyAnalyzer):
                     node_type = parts[0]
                     node_name = parts[1]
 
-                # Use empty string instead of None for file_path
-                self._add_node(target, node_category, node_type, node_name, "")
+                # Attempt to resolve the file path from pre-built maps before defaulting to empty string.
+                file_path = (
+                    self._resource_map.get(target)
+                    or self._variable_map.get(target)
+                    or self._local_map.get(target)
+                    or self._output_map.get(target)
+                    or self._module_map.get(target)
+                    or ""
+                )
+
+                self._add_node(target, node_category, node_type, node_name, file_path)
 
     def export_dependency_graph(
         self, output_format: str = "json", output_path: Optional[str] = None
