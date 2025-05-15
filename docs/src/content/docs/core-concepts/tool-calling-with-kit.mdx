@@ -100,4 +100,100 @@ Tool-calling conversations have **three channels of intent**:
 2. **Developer prompt** – _app-level_ steering: *"If the user asks for code you have not seen, call `get_file_content` first."*  
 3. **User prompt** – the human's actual message.
 
-`kit` does *not* impose a format—you simply include the JSON-schema from `kit.get_tool_schemas()` in your `tools` / `functions`
+`kit` does *not* impose a format—you simply include the JSON-schema from `kit.get_tool_schemas()` in your `tools` / `functions` field and add whatever system/developer guidance you choose.
+A common pattern is:
+
+```python
+system = """You are an AI software-engineer.
+Feel free to call tools when they help you answer precisely.
+When showing code, prefer the smallest snippet that answers the question.
+"""
+
+developer = """Available repos are already open in the session.
+Call `search_code` before you attempt to answer questions like
+  *"Where is X defined?"* or *"Show references to Y"*.
+Use `get_code_summary` before writing long explanations of unfamiliar files.
+"""
+
+messages = [
+    {"role": "system", "content": system},
+    {"role": "system", "name": "dev-instructions", "content": developer},
+    {"role": "user", "content": user_query},
+]
+```
+
+Because the developer message is separate from the user's content it can be updated dynamically by your app (e.g. after each tool result) without contaminating the visible chat transcript.
+
+## 4  Streaming multi-tool conversations
+
+Nothing prevents the LLM from chaining calls:
+
+1. `extract_symbols` on the failing file.
+2. Pick the function, then `get_code_summary` for a concise explanation.
+
+Frameworks like **LangChain**, **LlamaIndex** or **CrewAI** can route these calls automatically when you surface kit's tool schema as their "tool" object.
+
+```python
+from langchain_community.tools import Tool
+kit_tools = [Tool.from_mcp_schema(t, call_kit_server) for t in functions]
+```
+
+## 5  Security considerations
+
+`get_file_content` streams raw code.  If you expose kit to an external service:
+
+* Restrict `open_repository` to a safe path.
+* Consider stripping secrets from returned text.
+* Disable `get_file_content` for un-trusted queries and rely on `extract_symbols` + `get_code_summary` instead.
+
+## 6  In-process (no extra server)
+
+If your application is **already written in Python** you don't have to spawn any servers at all—just keep a `Repository` instance in memory and expose thin wrappers as tools/functions:
+
+```python
+from typing import TypedDict
+from kit import Repository
+
+repo = Repository("/path/to/repo")
+
+class SearchArgs(TypedDict):
+    query: str
+    pattern: str
+
+def search_code(args: SearchArgs):
+    return repo.search_text(args["query"], file_pattern=args.get("pattern", "*.py"))
+```
+
+Then register the wrapper with your tool-calling framework:
+
+```python
+from openai import OpenAI
+client = OpenAI()
+
+functions = [
+    {
+        "name": "search_code",
+        "description": "Regex search across the active repository",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "query": {"type": "string"},
+                "pattern": {"type": "string", "default": "*.py"},
+            },
+            "required": ["query"],
+        },
+    },
+]
+
+client.chat.completions.create(
+    model="gpt-4o",
+    tools=functions,
+    messages=[...]
+)
+```
+
+Because everything stays in the same process you avoid IPC/JSON overhead and can share caches (e.g. the `RepoMapper` symbol index) across calls.
+
+**Tip:** if you later need multi-language tooling or a separate sandbox you can still swap in the MCP server without touching your prompt logic—the function schema stays the same.
+
+---
