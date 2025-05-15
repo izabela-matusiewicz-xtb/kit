@@ -7,7 +7,7 @@
 
 Use `kit` to build things like code reviewers, code generators, even IDEs, all enriched with the right code context.
 
-Work with `kit` directly from `Python`, or via MCP, with LLM function-calling, or (soon) from the `kit` REST server.
+Work with `kit` directly from Python, or via MCP, with LLM function-calling, or (soon) from the `kit` REST server.
 
 ## Quick Installation
 
