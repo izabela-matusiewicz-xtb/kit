@@ -7,7 +7,7 @@ Modern LLM runtimes (OpenAI *function-calling*, Anthropic *tools*, etc.) let you
 
 With `kit` you can  expose its code-intelligence primitives (search, symbol extraction, summaries, etc) and let the LLM decide which one to execute in each turn.  Your app stays declarative: *"Here are the tools, here is the user's question, please help."*
 
-In practice that means you can drop `kit` into an existing chat agent with **zero orchestration logic** beyond registering the schema.  The rest of this guide shows the small amount of glue code needed and the conversational patterns that emerge.
+In practice that means you can drop `kit` into an existing chat agent with by just registering the schema and making the calls as needed. The rest of this guide shows the small amount of glue code needed and the conversational patterns that emerge.
 
 You may also be interested in kit's [MCP integration](../mcp/using-kit-with-mcp), which can achieve similar goals.
 
