@@ -151,6 +151,17 @@ class Repository:
         """
         return self.searcher.search_text(query, file_pattern)
 
+    def get_code_searcher(self) -> "CodeSearcher":
+        """Return a CodeSearcher bound to this repository.
+
+        This is a lightweight accessor that exposes the underlying
+        ``CodeSearcher`` instance created during ``Repository``
+        initialization.  It can be useful in interactive scenarios or
+        notebooks where you already have a ``Repository`` object and want
+        to re-use its searcher without re-instantiating one manually.
+        """
+        return self.searcher
+
     def chunk_file_by_lines(self, file_path: str, max_lines: int = 50) -> List[str]:
         """
         Chunks a file into lines.
