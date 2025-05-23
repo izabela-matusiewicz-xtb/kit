@@ -24,7 +24,12 @@ export default defineConfig({
       sidebar: [
         {
           label: " Introduction",
-          autogenerate: { directory: "introduction" },
+          items: [
+            "introduction/overview",
+            "introduction/quickstart",
+            "introduction/usage-guide",
+            "introduction/cli",
+          ],
         },
         {
           label: " Core Concepts",
