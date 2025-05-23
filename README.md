@@ -3,7 +3,7 @@
 
 <img src="https://github.com/user-attachments/assets/7bdfa9c6-94f0-4ee0-9fdd-cbd8bd7ec060" width="360">
 
-`kit` is a production-ready Python toolkit for codebase mapping, symbol extraction, code search, and building LLM-powered developer tools, agents, and workflows. 
+`kit` is a production-ready toolkit for codebase mapping, symbol extraction, code search, and building LLM-powered developer tools, agents, and workflows. 
 
 Use `kit` to build things like code reviewers, code generators, even IDEs, all enriched with the right code context.
 
@@ -123,6 +123,7 @@ interpreter your MCP client is using is the correct one.
 ## Documentation
 
 Explore the **[Full Documentation](https://kit.cased.com)** for detailed usage, advanced features, and practical examples.
+Full REST documentation is also available.
 
 
 ## License
