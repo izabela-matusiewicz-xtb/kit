@@ -14,7 +14,6 @@ Work with `kit` directly from Python, or with MCP + function calling, REST, or C
 ### Install from PyPI
 
 ```bash
-# Standard installation (all features, including the kit-mcp server)
 pip install cased-kit
 ```
 
