@@ -114,17 +114,20 @@ kit review https://github.com/owner/repo/pull/123
 
 `kit` offers three distinct review modes to match your needs and budget:
 
-| Mode | Cost* | Speed | Use Case | Command |
-|------|-------|-------|----------|---------|
-| **Standard** | ~$0.03 | Fast | Most PRs - best value | `kit review <pr-url>` |
-| **Agentic (Budget)** | ~$0.25 | Medium | Complex PRs, budget-conscious | `kit review --agentic --agentic-turns 8 <pr-url>` |
-| **Agentic (Thorough)** | ~$0.40 | Slower | Critical PRs, maximum depth | `kit review --agentic --agentic-turns 15 <pr-url>` |
+| Mode | Cost* | Speed | Quality | Use Case | Command |
+|------|-------|-------|---------|----------|---------|
+| **Simple** | ~$0.015 | Fastest | Basic | Quick feedback, budget reviews | `kit review --simple <pr-url>` |
+| **Standard** | ~$0.10-0.30 | Fast | Best | Most PRs - best value | `kit review <pr-url>` |
+| **Agentic** | ~$0.56-3.07 | Slowest | Variable** | Research/experimentation | `kit review --agentic <pr-url>` |
 
 *Costs shown are estimates for a typical 3-6 file PR using Claude Sonnet 4. Actual costs depend on PR size and complexity.
+**Agentic mode can produce false positives and overconfident conclusions - use with caution.
 
-**Standard Mode** leverages kit's repository intelligence for fast, comprehensive reviews with symbol analysis and cross-codebase impact assessment.
+**Simple Mode** provides fast file-level analysis without repository context - reliable and cost-effective.
 
-**Agentic Mode** uses multi-turn analysis where the AI strategically investigates the PR using kit's tools, building deep understanding through iterative exploration. Configurable turn limits let you balance thoroughness with cost.
+**Standard Mode** leverages kit's repository intelligence for comprehensive reviews with symbol analysis and cross-codebase impact assessment. **Recommended for most use cases.**
+
+**Agentic Mode** uses multi-turn analysis where the AI investigates the PR using kit's tools. Currently serves as a research artifact demonstrating that complex agent approaches often produce worse results at higher cost than focused approaches.
 
 ## Key Features & Capabilities
 
@@ -207,4 +210,3 @@ MIT License
 - **Project Direction**: See our [Roadmap](https://kit.cased.com/development/roadmap) for future plans and focus areas.
 
 To contribute, fork the repository, make your changes, and submit a pull request.
-
