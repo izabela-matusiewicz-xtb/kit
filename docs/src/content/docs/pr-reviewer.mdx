@@ -1,0 +1,275 @@
+---
+title: AI PR Reviewer
+description: Production-ready AI-powered code reviewer with full repository context, transparent pricing, and CI/CD integration
+sidebar:
+  order: 2
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+# Kit AI PR Reviewer
+
+Kit includes a **production-ready AI PR reviewer** that provides professional-grade code analysis with full repository context. Choose from 10 models ranging from $0.005 to $0.91 per review with complete cost transparency.
+
+<Aside type="tip">
+**Want to build a custom reviewer?** See the [Build an AI PR Reviewer tutorial](/tutorials/ai_pr_reviewer) to create your own using kit's components.
+</Aside>
+
+## 🚀 Quick Start
+
+```bash
+# 1. Install kit
+pip install cased-kit
+
+# 2. Set up configuration
+kit review --init-config
+
+# 3. Set API keys
+export KIT_GITHUB_TOKEN="ghp_your_token"
+export KIT_ANTHROPIC_TOKEN="sk-ant-your_key"
+
+# 4. Review any GitHub PR
+kit review https://github.com/owner/repo/pull/123
+
+# 5. Test without posting (dry run)
+kit review --dry-run https://github.com/owner/repo/pull/123
+```
+
+## 💰 Transparent Pricing
+
+Based on real-world testing on production open source PRs:
+
+### Model Options (Large PR Example)
+
+| Model | Cost | Quality | Best For |
+|-------|------|---------|----------|
+| **gpt-4.1-nano** | **$0.0046** | ⭐⭐⭐ | High-volume, budget teams |
+| **gpt-4o-mini** | **$0.0067** | ⭐⭐⭐⭐ | Regular development |
+| **claude-sonnet-4** | **$0.1759** | ⭐⭐⭐⭐⭐ | **Recommended** |
+| **claude-opus-4** | **$0.9086** | ⭐⭐⭐⭐⭐ | Critical infrastructure |
+
+**197x price difference** between cheapest and most expensive model.
+
+### Monthly Cost Examples
+
+| Team Size | Budget Model | Recommended | Premium |
+|-----------|--------------|-------------|---------|
+| **Small** (20 PRs/month) | $0.09 | $3.52 | $18.17 |
+| **Medium** (100 PRs/month) | $0.46 | $17.59 | $90.86 |
+| **Enterprise** (500 PRs/month) | $2.30 | $87.95 | $454.30 |
+
+> **💡 Pro Tip:** Don't underestimate the smaller models! GPT-4.1-nano and GPT-4o-mini deliver surprisingly useful reviews. For most small teams (20-50 PRs/month), you can get comprehensive AI code reviews for **less than $1/month**.
+
+## 🎯 Key Features
+
+### Intelligent Analysis
+- **Repository Context**: Full codebase understanding, not just diff analysis
+- **Symbol Analysis**: Identifies when functions/classes are used elsewhere  
+- **Cross-Impact Assessment**: Understands how changes affect the broader system
+- **Multi-Language Support**: Works with any language kit supports
+
+### Professional Output
+- **Priority-Based Issues**: High/Medium/Low issue categorization
+- **Specific Recommendations**: Concrete code suggestions with examples
+- **GitHub Integration**: Clickable links to all referenced files
+- **Quality Scoring**: Objective metrics for review effectiveness
+
+### Cost & Transparency
+- **Real-Time Cost Tracking**: See exact LLM usage and costs
+- **Token Breakdown**: Understand what drives costs
+- **Model Information**: Know which AI provided the analysis
+- **No Hidden Fees**: Pay only for actual LLM usage
+
+## 🔧 Configuration
+
+### Setup API Keys
+
+**GitHub Token**: Get from [GitHub Settings → Developer settings → Personal access tokens](https://github.com/settings/tokens)
+```bash
+export KIT_GITHUB_TOKEN="ghp_your_token_here"
+```
+
+**LLM API Keys**: 
+```bash
+# For Anthropic Claude (recommended)
+export KIT_ANTHROPIC_TOKEN="sk-ant-your_key"
+
+# For OpenAI GPT models
+export KIT_OPENAI_TOKEN="sk-your_openai_key"
+```
+
+### Configuration File
+
+Edit `~/.kit/review-config.yaml`:
+
+```yaml
+github:
+  token: ghp_your_token_here
+  base_url: https://api.github.com
+
+llm:
+  provider: anthropic  # or "openai"
+  model: claude-sonnet-4-20250514
+  api_key: sk-ant-your_key_here
+  max_tokens: 4000
+  temperature: 0.1
+
+review:
+  post_as_comment: true
+  clone_for_analysis: true
+  cache_repos: true
+  max_files: 50
+```
+
+## 📊 Review Examples
+
+See real-world examples with actual costs and analysis:
+
+- **[FastAPI Packaging Change](/src/kit/pr_review/example_reviews/fastapi_11935_standard_dependencies.md)** ($0.034) - Architectural impact analysis
+- **[React.dev UI Feature](/src/kit/pr_review/example_reviews/react_dev_6986_branding_menu.md)** ($0.012) - Accessibility-focused review  
+- **[Documentation Fix](/src/kit/pr_review/example_reviews/biopython_204_documentation_fix.md)** ($0.006) - Proportional response
+- **[Multi-Model Comparison](/src/kit/pr_review/example_reviews/model_comparison_fastapi_11935.md)** - Cost vs quality analysis
+
+## 🚀 CI/CD Integration
+
+### GitHub Actions
+
+Create `.github/workflows/pr-review.yml`:
+
+```yaml
+name: AI PR Review
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  ai-review:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      contents: read
+    
+    steps:
+      - name: AI Code Review
+        run: |
+          pip install cased-kit
+          kit review ${{ github.event.pull_request.html_url }}
+        env:
+          KIT_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          KIT_ANTHROPIC_TOKEN: ${{ secrets.ANTHROPIC_API_KEY }}
+```
+
+### Advanced Workflows
+
+**Budget-Conscious Setup** (GPT-4.1-nano):
+```yaml
+- name: Budget AI Review
+  run: |
+    pip install cased-kit
+    # Configure for ultra-low cost
+    kit review --model gpt-4.1-nano ${{ github.event.pull_request.html_url }}
+```
+
+**Conditional Reviews**:
+```yaml
+# Only review non-draft PRs
+- name: AI Review
+  if: "!github.event.pull_request.draft"
+  
+# Only review PRs with specific labels  
+- name: AI Review
+  if: contains(github.event.pull_request.labels.*.name, 'needs-review')
+```
+
+## 🎯 Review Modes
+
+### Standard Mode (Recommended)
+- **Cost**: $0.01-0.05 per typical PR
+- **Speed**: 15-45 seconds
+- **Features**: Repository intelligence, symbol analysis, impact assessment
+
+### Agentic Mode (Experimental)  
+- **Cost**: $0.36-2.57 per typical PR
+- **Speed**: 1-5 minutes
+- **Features**: Multi-turn analysis, deeper investigation
+
+```bash
+# Use agentic mode for complex PRs
+kit review --agentic --agentic-turns 15 <pr-url>
+```
+
+## 📈 What's Next: Roadmap
+
+#### Custom Context & Learning
+- **Per-Organization Context**: Store custom guidelines and coding standards
+- **Feedback Learning**: Simple database to learn from review feedback
+- **Inline Comments**: Post comments directly on specific lines
+
+```bash
+# Coming soon
+kit profile create --name "company-standards" --file coding-guidelines.md
+kit review --profile company-standards <pr-url>
+kit feedback <review-id> --helpful --notes "Great catch!"
+```
+
+### 🎯 Medium Term (Q3-Q4 2025)
+
+#### Advanced Features
+- **Multi-Model Consensus**: Route to different models and combine insights
+- **Context Learning**: Automatically adapt context selection over time  
+- **IDE Integration**: Real-time suggestions in VS Code and other editors
+
+```bash
+# Future features
+kit review <pr-url> --consensus  # Multiple models
+kit review <pr-url> --mode inline  # Line-level comments
+```
+
+## 🔍 Advanced Usage
+
+### Cache Management
+```bash
+# Check cache status
+kit review-cache status
+
+# Clean up old repositories  
+kit review-cache cleanup
+
+# Clear all cached repositories
+kit review-cache clear
+```
+
+### Model Selection
+
+**For Budget Teams**: Use `gpt-4.1-nano` for routine reviews, upgrade to `claude-sonnet-4` for important changes.
+
+**For Production Teams**: Use `claude-sonnet-4` as default with occasional `claude-opus-4` for critical infrastructure changes.
+
+### Quality Validation
+
+Every review includes objective quality scoring:
+- **File References**: Checks if review references actual changed files
+- **Specificity**: Measures concrete vs vague feedback  
+- **Coverage**: Assesses if major changes are addressed
+- **Relevance**: Ensures suggestions align with actual code changes
+
+## 💡 Best Practices
+
+### Cost Optimization
+- Use budget models for routine changes, premium for breaking changes
+- Leverage caching - repeat reviews of same repo are 5-10x faster
+- Set up profiles to avoid redundant context
+
+### Team Adoption
+- Start with dry runs to build confidence
+- Use budget models initially to control costs
+- Create organization-specific guidelines for consistent reviews
+
+### Integration
+- Add to CI/CD for all PRs or just high-impact branches
+- Use conditional logic to avoid reviewing bot PRs or documentation-only changes
+- Monitor costs and adjust model selection based on team needs
+
+---
+
+The kit AI PR reviewer provides **professional-grade code analysis** at costs accessible to any team size, from $0.46/month for small teams to enterprise-scale deployment. With full repository context and transparent pricing, it's designed to enhance your development workflow without breaking the budget. 

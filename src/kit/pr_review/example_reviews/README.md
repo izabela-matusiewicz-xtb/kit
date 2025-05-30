@@ -25,10 +25,10 @@ Real-world examples of Kit AI-powered code reviews on open source projects, demo
 - **UI Feature Addition**: $0.0118 - Emphasizes accessibility and user experience
 - **Major Architecture Change**: $0.0340 - Deep analysis of ecosystem impact
 
-### 2. **Amazing Value at Ultra-Low Costs**
-- **GPT-4.1-nano**: $0.005 per large PR - genuinely useful reviews for the cost of a coffee
-- **Monthly costs**: $0.46 for 100 PRs with budget models
-- **Enterprise teams**: $87.95/month for 500 PRs with recommended model
+### 2. **Ridiculous Value at Ultra-Low Costs**
+- **GPT-4.1-nano**: $0.005 per large PR - genuinely useful reviews for virtually nothing
+- **Monthly costs on decent models**: $0.46 for 100 PRs with budget models
+- **Top quality**: $87.95/month (yes) for 500 PRs with best-recommended model and settings
 
 ### 3. **Professional Quality Analysis**
 - Identifies specific issues with file/line references
@@ -90,7 +90,7 @@ The $0.91 Claude Opus 4 model provides executive-level analysis:
 - Detailed migration guides
 
 ### 3. **Sweet Spot for Most Teams**
-Claude Sonnet 4 at ~$0.18 per large PR offers:
+Claude Sonnet 4 at ~$0.18 (often lower) per large PR offers:
 - Professional-grade analysis
 - Excellent cost/quality balance
 - Comprehensive technical depth
