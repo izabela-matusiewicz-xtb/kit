@@ -64,6 +64,8 @@ Tested on [cased/comet PR #2064](https://github.com/cased/comet/pull/2064) - a l
 - **OpenAI models** use fewer input tokens (~40k vs ~52k) but deliver comparable analysis depth
 - **GPT-4.1 series** provides excellent mid-range options between ultra-budget and premium
 
+> **💡 Pro Tip:** Don't underestimate the smaller models! GPT-4.1-nano and GPT-4o-mini deliver surprisingly useful reviews. For most small teams (20-50 PRs/month), you can get comprehensive AI code reviews for **less than $1/month** with these budget models. That's potentially transformative value for the cost of a coffee.
+
 **Projected Monthly Costs (Based on Real Data):**
 
 | Team Size | GPT-4.1-nano (Ultra Budget) | Claude Sonnet 4 (Recommended) | Claude Opus 4 (Premium) |
@@ -79,13 +81,6 @@ Tested on [cased/comet PR #2064](https://github.com/cased/comet/pull/2064) - a l
 ### Standard Mode (Recommended)
 
 **How it works**: Leverages kit's repository intelligence for comprehensive reviews with symbol analysis and cross-codebase impact assessment.
-
-**Performance Profile**:
-```
-Cost: $0.02-0.05 (typical PR; can go up to 20 cents at the extreme)
-Speed: 15-45 seconds  
-Quality: Excellent balance of depth and accuracy
-```
 
 **Strengths**:
 - Excellent quality-to-cost ratio
@@ -103,13 +98,6 @@ Quality: Excellent balance of depth and accuracy
 ### Agentic Mode (Experimental)
 
 **How it works**: Uses multi-turn analysis where the AI investigates the PR using kit's tools through iterative exploration. Expensive, and with unclear quality improvenents.
-
-**Performance Profile**:
-```
-Cost: $0.36-2.57 (typical PR)
-Speed: 1-5 minutes
-Quality: Variable - can produce false positives
-```
 
 **Important Notes**:
 - **Experimental feature** - currently serves as research artifact
