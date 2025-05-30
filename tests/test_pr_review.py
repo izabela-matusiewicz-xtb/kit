@@ -10,7 +10,6 @@ import pytest
 from kit.pr_review.config import GitHubConfig, LLMConfig, LLMProvider, ReviewConfig
 from kit.pr_review.cost_tracker import CostBreakdown, CostTracker
 from kit.pr_review.reviewer import PRReviewer
-from kit.pr_review.simple_reviewer import SimplePRReviewer
 from kit.pr_review.validator import ValidationResult, validate_review_quality
 
 
@@ -18,7 +17,7 @@ def test_pr_url_parsing():
     """Test PR URL parsing functionality."""
     config = ReviewConfig(
         github=GitHubConfig(token="test"),
-        llm=LLMConfig(provider=LLMProvider.ANTHROPIC, model="claude-4-sonnet", api_key="test")
+        llm=LLMConfig(provider=LLMProvider.ANTHROPIC, model="claude-4-sonnet", api_key="test"),
     )
     reviewer = PRReviewer(config)
 
@@ -35,25 +34,6 @@ def test_pr_url_parsing():
     # Test PR number only (should raise NotImplementedError for now)
     with pytest.raises(NotImplementedError):
         reviewer.parse_pr_url("47")
-
-
-def test_simple_reviewer_url_parsing():
-    """Test SimplePRReviewer URL parsing."""
-    config = ReviewConfig(
-        github=GitHubConfig(token="test"),
-        llm=LLMConfig(provider=LLMProvider.ANTHROPIC, model="claude-3-5-sonnet-20241022", api_key="test")
-    )
-    reviewer = SimplePRReviewer(config)
-
-    # Test valid URLs
-    owner, repo, pr_number = reviewer.parse_pr_url("https://github.com/microsoft/vscode/pull/12345")
-    assert owner == "microsoft"
-    assert repo == "vscode"
-    assert pr_number == 12345
-
-    # Test invalid format
-    with pytest.raises(ValueError):
-        reviewer.parse_pr_url("not-a-url")
 
 
 def test_cost_tracker_anthropic():
@@ -87,7 +67,7 @@ def test_cost_tracker_unknown_model():
     """Test cost tracking for unknown models uses estimates."""
     tracker = CostTracker()
 
-    with patch('builtins.print') as mock_print:
+    with patch("builtins.print") as mock_print:
         tracker.track_llm_usage(LLMProvider.ANTHROPIC, "unknown-model", 1000, 500)
 
         # Should print warning
@@ -203,7 +183,7 @@ def test_config_creation():
 
         config = ReviewConfig(
             github=GitHubConfig(token="test"),
-            llm=LLMConfig(provider=LLMProvider.ANTHROPIC, model="claude-4-sonnet", api_key="test")
+            llm=LLMConfig(provider=LLMProvider.ANTHROPIC, model="claude-4-sonnet", api_key="test"),
         )
 
         created_path = config.create_default_config_file(str(config_path))
@@ -216,12 +196,15 @@ def test_config_creation():
 
 def test_config_from_env():
     """Test configuration loading from environment variables."""
-    with patch.dict(os.environ, {
-        'GITHUB_TOKEN': 'old_github_token',
-        'KIT_GITHUB_TOKEN': 'new_github_token',
-        'ANTHROPIC_API_KEY': 'old_anthropic_key',
-        'KIT_ANTHROPIC_TOKEN': 'new_anthropic_token'
-    }):
+    with patch.dict(
+        os.environ,
+        {
+            "GITHUB_TOKEN": "old_github_token",
+            "KIT_GITHUB_TOKEN": "new_github_token",
+            "ANTHROPIC_API_KEY": "old_anthropic_key",
+            "KIT_ANTHROPIC_TOKEN": "new_anthropic_token",
+        },
+    ):
         # Use a non-existent config file to force env var usage
         config = ReviewConfig.from_file("/non/existent/path")
 
@@ -234,12 +217,16 @@ def test_config_from_env():
 def test_config_backwards_compatibility():
     """Test configuration falls back to old environment variables."""
     # Clear all GitHub-related env vars first
-    with patch.dict(os.environ, {
-        'GITHUB_TOKEN': 'test_github_token',
-        'ANTHROPIC_API_KEY': 'test_anthropic_key',
-        'KIT_GITHUB_TOKEN': '',  # Clear the preferred var
-        'KIT_ANTHROPIC_TOKEN': '',  # Clear the preferred var
-    }, clear=False):
+    with patch.dict(
+        os.environ,
+        {
+            "GITHUB_TOKEN": "test_github_token",
+            "ANTHROPIC_API_KEY": "test_anthropic_key",
+            "KIT_GITHUB_TOKEN": "",  # Clear the preferred var
+            "KIT_ANTHROPIC_TOKEN": "",  # Clear the preferred var
+        },
+        clear=False,
+    ):
         # Use a non-existent config file to force env var usage
         config = ReviewConfig.from_file("/non/existent/path")
 
@@ -250,10 +237,7 @@ def test_config_backwards_compatibility():
 
 def test_config_openai_provider():
     """Test OpenAI provider configuration."""
-    with patch.dict(os.environ, {
-        'KIT_GITHUB_TOKEN': 'github_token',
-        'KIT_OPENAI_TOKEN': 'openai_token'
-    }):
+    with patch.dict(os.environ, {"KIT_GITHUB_TOKEN": "github_token", "KIT_OPENAI_TOKEN": "openai_token"}):
         config = ReviewConfig.from_file("/non/existent/path")
         config.llm.provider = LLMProvider.OPENAI
         config.llm.model = "gpt-4o"
@@ -269,8 +253,8 @@ def test_config_missing_tokens():
             ReviewConfig.from_file("/non/existent/path")
 
 
-@patch('kit.pr_review.reviewer.requests.Session')
-@patch('kit.pr_review.reviewer.subprocess.run')
+@patch("kit.pr_review.reviewer.requests.Session")
+@patch("kit.pr_review.reviewer.subprocess.run")
 def test_pr_review_dry_run(mock_subprocess, mock_session_class):
     """Test PR review in dry run mode (no actual API calls)."""
     # Mock subprocess for git operations
@@ -284,24 +268,24 @@ def test_pr_review_dry_run(mock_subprocess, mock_session_class):
     # Mock PR details response
     mock_pr_response = Mock()
     mock_pr_response.json.return_value = {
-        'title': 'Test PR',
-        'user': {'login': 'testuser'},
-        'base': {'ref': 'main', 'sha': 'abc123'},
-        'head': {'ref': 'feature-branch', 'sha': 'def456'}
+        "title": "Test PR",
+        "user": {"login": "testuser"},
+        "base": {"ref": "main", "sha": "abc123"},
+        "head": {"ref": "feature-branch", "sha": "def456"},
     }
 
     # Mock files response
     mock_files_response = Mock()
     mock_files_response.json.return_value = [
-        {'filename': 'test.py', 'additions': 10, 'deletions': 5},
-        {'filename': 'README.md', 'additions': 2, 'deletions': 0}
+        {"filename": "test.py", "additions": 10, "deletions": 5},
+        {"filename": "README.md", "additions": 2, "deletions": 0},
     ]
 
     # Configure mock to return different responses for different URLs
     def mock_get(url):
-        if url.endswith('/pulls/47'):
+        if url.endswith("/pulls/47"):
             return mock_pr_response
-        elif url.endswith('/pulls/47/files'):
+        elif url.endswith("/pulls/47/files"):
             return mock_files_response
         return Mock()
 
@@ -311,7 +295,7 @@ def test_pr_review_dry_run(mock_subprocess, mock_session_class):
         github=GitHubConfig(token="test"),
         llm=LLMConfig(provider=LLMProvider.ANTHROPIC, model="claude-4-sonnet", api_key="test"),
         post_as_comment=False,  # Dry run mode
-        clone_for_analysis=False  # Skip cloning to avoid git issues
+        clone_for_analysis=False,  # Skip cloning to avoid git issues
     )
 
     reviewer = PRReviewer(config)
@@ -330,76 +314,22 @@ def test_github_session_setup():
     """Test GitHub session is configured correctly."""
     config = ReviewConfig(
         github=GitHubConfig(token="test_token"),
-        llm=LLMConfig(provider=LLMProvider.ANTHROPIC, model="claude-4-sonnet", api_key="test")
+        llm=LLMConfig(provider=LLMProvider.ANTHROPIC, model="claude-4-sonnet", api_key="test"),
     )
 
     reviewer = PRReviewer(config)
 
     # Check session headers
     headers = reviewer.github_session.headers
-    assert headers['Authorization'] == 'token test_token'
-    assert headers['Accept'] == 'application/vnd.github.v3+json'
-    assert 'kit-pr-reviewer' in headers['User-Agent']
-
-
-@patch('kit.pr_review.simple_reviewer.requests.Session')
-def test_simple_reviewer_basic(mock_session_class):
-    """Test SimplePRReviewer basic functionality."""
-    mock_session = Mock()
-    mock_session_class.return_value = mock_session
-
-    # Mock API responses
-    mock_pr_response = Mock()
-    mock_pr_response.json.return_value = {
-        'title': 'Fix bug in auth',
-        'user': {'login': 'dev123'},
-        'base': {'ref': 'main'},
-        'head': {'ref': 'fix-auth-bug'}
-    }
-
-    mock_files_response = Mock()
-    mock_files_response.json.return_value = [
-        {'filename': 'auth.py', 'additions': 5, 'deletions': 2}
-    ]
-
-    mock_diff_response = Mock()
-    mock_diff_response.text = "+def fixed_function():\n+    return True"
-
-    def mock_get(url):
-        if '/pulls/' in url and not url.endswith('/files'):
-            return mock_pr_response
-        elif url.endswith('/files'):
-            return mock_files_response
-        return mock_diff_response
-
-    mock_session.get.side_effect = mock_get
-
-    config = ReviewConfig(
-        github=GitHubConfig(token="test"),
-        llm=LLMConfig(provider=LLMProvider.ANTHROPIC, model="claude-3-5-haiku-20241022", api_key="test")
-    )
-
-    reviewer = SimplePRReviewer(config)
-
-    # Test PR data fetching
-    owner, repo, pr_number = reviewer.parse_pr_url("https://github.com/test/repo/pull/123")
-    assert owner == "test"
-    assert repo == "repo"
-    assert pr_number == 123
-
-    # Test file fetching
-    files = reviewer.get_pr_files("test", "repo", 123)
-    assert len(files) == 1
-    assert files[0]['filename'] == 'auth.py'
+    assert headers["Authorization"] == "token test_token"
+    assert headers["Accept"] == "application/vnd.github.v3+json"
+    assert "kit-pr-reviewer" in headers["User-Agent"]
 
 
 def test_cost_breakdown_str():
     """Test cost breakdown string representation."""
     breakdown = CostBreakdown(
-        llm_input_tokens=1000,
-        llm_output_tokens=500,
-        llm_cost_usd=0.0234,
-        model_used="claude-3-5-sonnet-20241022"
+        llm_input_tokens=1000, llm_output_tokens=500, llm_cost_usd=0.0234, model_used="claude-3-5-sonnet-20241022"
     )
 
     str_repr = str(breakdown)

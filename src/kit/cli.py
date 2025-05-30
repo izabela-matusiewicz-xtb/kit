@@ -397,17 +397,23 @@ def git_info(
 @app.command("review")
 def review_pr(
     pr_url: Optional[str] = typer.Argument(None, help="GitHub PR URL (https://github.com/owner/repo/pull/123)"),
-    config: Optional[str] = typer.Option(None, "--config", "-c", help="Path to config file (default: ~/.kit/review-config.yaml)"),
+    config: Optional[str] = typer.Option(
+        None, "--config", "-c", help="Path to config file (default: ~/.kit/review-config.yaml)"
+    ),
     dry_run: bool = typer.Option(False, "--dry-run", "-n", help="Don't post comment, just show what would be posted"),
     init_config: bool = typer.Option(False, "--init-config", help="Create a default configuration file and exit"),
-    agentic: bool = typer.Option(False, "--agentic", help="Use multi-turn agentic analysis (more thorough but expensive)"),
-    agentic_turns: int = typer.Option(15, "--agentic-turns", help="Number of analysis turns for agentic mode (default: 15)"),
+    agentic: bool = typer.Option(
+        False, "--agentic", help="Use multi-turn agentic analysis (more thorough but expensive)"
+    ),
+    agentic_turns: int = typer.Option(
+        15, "--agentic-turns", help="Number of analysis turns for agentic mode (default: 15)"
+    ),
 ):
     """Review a GitHub PR using kit's repository intelligence and AI analysis.
 
     MODES:
-    • Standard (~$0.04): kit review <pr-url>
-    • Agentic (~$0.25): kit review --agentic <pr-url>
+    • Standard (~$0.01-0.05): kit review <pr-url>
+    • Agentic (~$0.36-2.57): kit review --agentic <pr-url>
 
     EXAMPLES:
     kit review --init-config                                   # Setup
@@ -426,9 +432,10 @@ def review_pr(
 
             # Create a temporary ReviewConfig just to use the create_default_config_file method
             from kit.pr_review.config import GitHubConfig, LLMConfig, LLMProvider
+
             temp_config = ReviewConfig(
                 github=GitHubConfig(token="temp"),
-                llm=LLMConfig(provider=LLMProvider.ANTHROPIC, model="temp", api_key="temp")
+                llm=LLMConfig(provider=LLMProvider.ANTHROPIC, model="temp", api_key="temp"),
             )
 
             created_path = temp_config.create_default_config_file(str(config_path))
@@ -463,17 +470,18 @@ def review_pr(
             review_config.agentic_max_turns = agentic_turns
             print(f"🤖 Agentic mode configured - max turns: {agentic_turns}")
             if agentic_turns <= 8:
-                print("💰 Expected cost: ~$0.20-0.30 (budget mode)")
+                print("💰 Expected cost: ~$0.36-0.80 (budget mode)")
             elif agentic_turns <= 15:
-                print("💰 Expected cost: ~$0.25-0.35 (standard mode)")
+                print("💰 Expected cost: ~$0.80-1.50 (standard mode)")
             else:
-                print("💰 Expected cost: ~$0.30-0.50+ (extended mode)")
+                print("💰 Expected cost: ~$1.50-2.57 (extended mode)")
         else:
             print("🛠️ Standard mode configured - repository intelligence enabled")
 
         # Create reviewer and run review
         if agentic:
             from kit.pr_review.agentic_reviewer import AgenticPRReviewer
+
             reviewer = AgenticPRReviewer(review_config)
             comment = reviewer.review_pr_agentic(pr_url)
         else:
@@ -481,11 +489,11 @@ def review_pr(
             comment = reviewer.review_pr(pr_url)
 
         if dry_run:
-            typer.echo("\n" + "="*60)
+            typer.echo("\n" + "=" * 60)
             typer.echo("REVIEW COMMENT THAT WOULD BE POSTED:")
-            typer.echo("="*60)
+            typer.echo("=" * 60)
             typer.echo(comment)
-            typer.echo("="*60)
+            typer.echo("=" * 60)
         else:
             typer.echo("✅ Review completed and comment posted!")
 
@@ -534,9 +542,9 @@ def review_cache(
         if action == "status":
             if cache.cache_dir.exists():
                 # Calculate cache size
-                total_size = sum(
-                    f.stat().st_size for f in cache.cache_dir.rglob('*') if f.is_file()
-                ) / (1024 ** 3)  # Convert to GB
+                total_size = sum(f.stat().st_size for f in cache.cache_dir.rglob("*") if f.is_file()) / (
+                    1024**3
+                )  # Convert to GB
 
                 # Count repositories
                 repo_count = 0

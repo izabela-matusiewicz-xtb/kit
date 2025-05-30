@@ -8,22 +8,52 @@ class FilePrioritizer:
 
     # File patterns to deprioritize or skip
     LOW_PRIORITY_PATTERNS: ClassVar[List[str]] = [
-        '.lock', 'package-lock.json', 'yarn.lock', 'Pipfile.lock',
-        '.generated', '.gen.', '_generated.', 'generated_',
-        'node_modules/', '__pycache__/', '.pytest_cache/',
-        '.git/', '.DS_Store', 'Thumbs.db',
-        '.min.js', '.min.css', '.bundle.js',
-        '.map', '.sourcemap',
+        ".lock",
+        "package-lock.json",
+        "yarn.lock",
+        "Pipfile.lock",
+        ".generated",
+        ".gen.",
+        "_generated.",
+        "generated_",
+        "node_modules/",
+        "__pycache__/",
+        ".pytest_cache/",
+        ".git/",
+        ".DS_Store",
+        "Thumbs.db",
+        ".min.js",
+        ".min.css",
+        ".bundle.js",
+        ".map",
+        ".sourcemap",
     ]
 
     # File patterns that are typically high-priority for analysis
     HIGH_PRIORITY_PATTERNS: ClassVar[List[str]] = [
-        '.py', '.js', '.ts', '.jsx', '.tsx',
-        '.java', '.c', '.cpp', '.h', '.hpp',
-        '.go', '.rs', '.rb', '.php',
-        'Dockerfile', 'docker-compose',
-        'requirements.txt', 'pyproject.toml', 'package.json',
-        '.yml', '.yaml', '.json', '.toml',
+        ".py",
+        ".js",
+        ".ts",
+        ".jsx",
+        ".tsx",
+        ".java",
+        ".c",
+        ".cpp",
+        ".h",
+        ".hpp",
+        ".go",
+        ".rs",
+        ".rb",
+        ".php",
+        "Dockerfile",
+        "docker-compose",
+        "requirements.txt",
+        "pyproject.toml",
+        "package.json",
+        ".yml",
+        ".yaml",
+        ".json",
+        ".toml",
     ]
 
     @classmethod
@@ -39,14 +69,10 @@ class FilePrioritizer:
             Tuple of (prioritized_files, skipped_count)
         """
         # Filter out obvious low-value files
-        filtered_files = [f for f in files if cls._is_analyzable_file(f['filename'])]
+        filtered_files = [f for f in files if cls._is_analyzable_file(f["filename"])]
 
         # Sort by total changes (additions + deletions)
-        sorted_files = sorted(
-            filtered_files,
-            key=lambda x: x.get('additions', 0) + x.get('deletions', 0),
-            reverse=True
-        )
+        sorted_files = sorted(filtered_files, key=lambda x: x.get("additions", 0) + x.get("deletions", 0), reverse=True)
 
         selected = sorted_files[:max_files]
         skipped = len(files) - len(selected)
@@ -66,11 +92,11 @@ class FilePrioritizer:
             Tuple of (prioritized_files, skipped_count)
         """
         # Separate files by status and filter
-        analyzable_files = [f for f in files if cls._is_analyzable_file(f['filename'])]
+        analyzable_files = [f for f in files if cls._is_analyzable_file(f["filename"])]
 
-        new_files = [f for f in analyzable_files if f.get('status') == 'added']
-        modified_files = [f for f in analyzable_files if f.get('status') == 'modified']
-        renamed_files = [f for f in analyzable_files if f.get('status') == 'renamed']
+        new_files = [f for f in analyzable_files if f.get("status") == "added"]
+        modified_files = [f for f in analyzable_files if f.get("status") == "modified"]
+        renamed_files = [f for f in analyzable_files if f.get("status") == "renamed"]
 
         priority_files = []
 
@@ -114,17 +140,17 @@ class FilePrioritizer:
 
         if skipped_count > 0:
             skipped_files = [f for f in all_files if f not in analyzed_files]
-            skipped_names = [f['filename'] for f in skipped_files[:5]]  # Show first 5
+            skipped_names = [f["filename"] for f in skipped_files[:5]]  # Show first 5
 
             summary += f"""
 - Skipped: {skipped_count} files (low-priority, generated, or minimal changes)"""
 
             if skipped_count <= 5:
                 summary += f"""
-- Skipped files: {', '.join(skipped_names)}"""
+- Skipped files: {", ".join(skipped_names)}"""
             else:
                 summary += f"""
-- Example skipped files: {', '.join(skipped_names)}, and {skipped_count - 5} others"""
+- Example skipped files: {", ".join(skipped_names)}, and {skipped_count - 5} others"""
 
         summary += f"""
 
@@ -148,9 +174,9 @@ class FilePrioritizer:
     @classmethod
     def _file_importance_score(cls, file_info: Dict[str, Any]) -> float:
         """Calculate importance score for a file (higher = more important)."""
-        filename = file_info['filename']
-        additions = file_info.get('additions', 0)
-        deletions = file_info.get('deletions', 0)
+        filename = file_info["filename"]
+        additions = file_info.get("additions", 0)
+        deletions = file_info.get("deletions", 0)
 
         # Base score from change volume
         change_score = additions + deletions
@@ -165,11 +191,11 @@ class FilePrioritizer:
                 break
 
         # Bonus for files that look like configuration or core logic
-        if any(keyword in filename_lower for keyword in ['config', 'main', 'index', 'init', 'setup']):
+        if any(keyword in filename_lower for keyword in ["config", "main", "index", "init", "setup"]):
             type_bonus += 25
 
         # Bonus for test files (important but not as much as source)
-        if any(keyword in filename_lower for keyword in ['test', 'spec']):
+        if any(keyword in filename_lower for keyword in ["test", "spec"]):
             type_bonus += 15
 
         # Penalty for very large files (might be auto-generated)

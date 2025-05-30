@@ -9,11 +9,12 @@ from .config import LLMProvider
 @dataclass
 class CostBreakdown:
     """Breakdown of costs for a PR review."""
+
     llm_input_tokens: int = 0
     llm_output_tokens: int = 0
     llm_cost_usd: float = 0.0
     model_used: str = ""
-    pricing_date: str = "2025-05-22"  # When Claude 4 pricing was last updated
+    pricing_date: str = "2025-05-22"
 
     def __str__(self) -> str:
         """Human-readable cost summary."""
@@ -31,52 +32,56 @@ class CostTracker:
     DEFAULT_PRICING: ClassVar[Dict] = {
         LLMProvider.ANTHROPIC: {
             "claude-opus-4-20250514": {
-                "input_per_million": 15.00,   # $15.00 per million input tokens
-                "output_per_million": 75.00   # $75.00 per million output tokens
+                "input_per_million": 15.00,  # $15.00 per million input tokens
+                "output_per_million": 75.00,  # $75.00 per million output tokens
             },
             "claude-sonnet-4-20250514": {
-                "input_per_million": 3.00,    # $3.00 per million input tokens
-                "output_per_million": 15.00   # $15.00 per million output tokens
+                "input_per_million": 3.00,  # $3.00 per million input tokens
+                "output_per_million": 15.00,  # $15.00 per million output tokens
             },
             "claude-3-5-sonnet-20241022": {
-                "input_per_million": 3.00,   # $3.00 per million input tokens
-                "output_per_million": 15.00  # $15.00 per million output tokens
+                "input_per_million": 3.00,  # $3.00 per million input tokens
+                "output_per_million": 15.00,  # $15.00 per million output tokens
             },
             "claude-3-5-sonnet-latest": {
-                "input_per_million": 3.00,   # $3.00 per million input tokens
-                "output_per_million": 15.00  # $15.00 per million output tokens
+                "input_per_million": 3.00,  # $3.00 per million input tokens
+                "output_per_million": 15.00,  # $15.00 per million output tokens
             },
             "claude-3-5-haiku-20241022": {
-                "input_per_million": 0.80,   # $0.80 per million input tokens
-                "output_per_million": 4.00   # $4.00 per million output tokens
+                "input_per_million": 0.80,  # $0.80 per million input tokens
+                "output_per_million": 4.00,  # $4.00 per million output tokens
             },
             "claude-3-5-haiku-latest": {
-                "input_per_million": 0.80,   # $0.80 per million input tokens
-                "output_per_million": 4.00   # $4.00 per million output tokens
-            }
+                "input_per_million": 0.80,  # $0.80 per million input tokens
+                "output_per_million": 4.00,  # $4.00 per million output tokens
+            },
         },
         LLMProvider.OPENAI: {
+            "gpt-4.1": {
+                "input_per_million": 2.00,  # $2.00 per million input tokens
+                "output_per_million": 8.00,  # $8.00 per million output tokens
+            },
+            "gpt-4.1-mini": {
+                "input_per_million": 0.40,  # $0.40 per million input tokens
+                "output_per_million": 1.60,  # $1.60 per million output tokens
+            },
+            "gpt-4.1-nano": {
+                "input_per_million": 0.10,  # $0.10 per million input tokens
+                "output_per_million": 0.40,  # $0.40 per million output tokens
+            },
             "gpt-4o": {
-                "input_per_million": 2.50,   # $2.50 per million input tokens
-                "output_per_million": 10.00  # $10.00 per million output tokens
+                "input_per_million": 2.50,  # $2.50 per million input tokens
+                "output_per_million": 10.00,  # $10.00 per million output tokens
             },
             "gpt-4o-mini": {
-                "input_per_million": 0.15,   # $0.15 per million input tokens
-                "output_per_million": 0.60   # $0.60 per million output tokens
+                "input_per_million": 0.15,  # $0.15 per million input tokens
+                "output_per_million": 0.60,  # $0.60 per million output tokens
             },
             "gpt-4-turbo": {
                 "input_per_million": 10.00,  # $10.00 per million input tokens
-                "output_per_million": 30.00  # $30.00 per million output tokens
+                "output_per_million": 30.00,  # $30.00 per million output tokens
             },
-            "gpt-3.5-turbo": {
-                "input_per_million": 0.50,   # $0.50 per million input tokens
-                "output_per_million": 1.50   # $1.50 per million output tokens
-            },
-            "gpt-4": {
-                "input_per_million": 30.00,  # $30.00 per million input tokens
-                "output_per_million": 60.00  # $60.00 per million output tokens
-            }
-        }
+        },
     }
 
     def __init__(self, custom_pricing: Optional[Dict] = None):

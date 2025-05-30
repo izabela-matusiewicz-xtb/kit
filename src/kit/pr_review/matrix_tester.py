@@ -9,15 +9,15 @@ from typing import Any, Dict, List, Optional
 from .agentic_reviewer import AgenticPRReviewer
 from .config import GitHubConfig, LLMConfig, LLMProvider, ReviewConfig
 from .reviewer import PRReviewer
-from .simple_reviewer import SimplePRReviewer
 from .validator import validate_review_quality
 
 
 @dataclass
 class TestResult:
     """Result of a single test run."""
+
     pr_url: str
-    mode: str  # 'simple', 'standard', 'agentic'
+    mode: str  # 'standard', 'agentic'
     model: str
     provider: str
     success: bool
@@ -35,6 +35,7 @@ class TestResult:
 @dataclass
 class MatrixTestSuite:
     """Complete test suite results."""
+
     test_runs: List[TestResult]
     summary_stats: Dict[str, Any]
     cost_analysis: Dict[str, Any]
@@ -60,30 +61,25 @@ class MatrixTester:
             (LLMProvider.OPENAI, "gpt-4-turbo", "GPT-4 Turbo"),
         ]
 
-        self.modes = [
-            ('simple', 'Simple'),
-            ('standard', 'Standard'),
-            ('agentic', 'Agentic')
-        ]
+        self.modes = [("standard", "Standard"), ("agentic", "Agentic")]
 
     def create_config(self, provider: LLMProvider, model: str) -> ReviewConfig:
         """Create config for specific provider/model combination."""
         # Copy base config
-        github_config = GitHubConfig(
-            token=self.base_config.github.token,
-            base_url=self.base_config.github.base_url
-        )
+        github_config = GitHubConfig(token=self.base_config.github.token, base_url=self.base_config.github.base_url)
 
         # Determine API key
         if provider == LLMProvider.ANTHROPIC:
             api_key = self.base_config.llm.api_key if self.base_config.llm.provider == provider else None
             if not api_key:
                 import os
+
                 api_key = os.getenv("KIT_ANTHROPIC_TOKEN")
         else:
             api_key = self.base_config.llm.api_key if self.base_config.llm.provider == provider else None
             if not api_key:
                 import os
+
                 api_key = os.getenv("KIT_OPENAI_TOKEN")
 
         if not api_key:
@@ -94,7 +90,7 @@ class MatrixTester:
             model=model,
             api_key=api_key,
             max_tokens=self.base_config.llm.max_tokens,
-            temperature=self.base_config.llm.temperature
+            temperature=self.base_config.llm.temperature,
         )
 
         return ReviewConfig(
@@ -102,10 +98,12 @@ class MatrixTester:
             llm=llm_config,
             post_as_comment=False,  # Never post during testing
             clone_for_analysis=self.base_config.clone_for_analysis,
-            cache_repos=self.base_config.cache_repos
+            cache_repos=self.base_config.cache_repos,
         )
 
-    def run_single_test(self, pr_url: str, mode: str, provider: LLMProvider, model: str, display_name: str) -> TestResult:
+    def run_single_test(
+        self, pr_url: str, mode: str, provider: LLMProvider, model: str, display_name: str
+    ) -> TestResult:
         """Run a single test combination."""
         print(f"🧪 Testing: {display_name} | {mode.upper()} mode")
         print(f"   📍 Model: {model}")
@@ -119,17 +117,12 @@ class MatrixTester:
             print(f"   ⚙️  Config created for {provider.value}")
 
             # Run review based on mode
-            if mode == 'simple':
-                print("   🏃‍♂️ Running SIMPLE review...")
-                reviewer = SimplePRReviewer(config)
-                review = reviewer.review_pr_simple(pr_url)
-                cost = reviewer.cost_tracker.breakdown.llm_cost_usd
-            elif mode == 'standard':
+            if mode == "standard":
                 print("   🛠️  Running STANDARD review...")
                 reviewer = PRReviewer(config)
                 review = reviewer.review_pr(pr_url)
                 cost = reviewer.cost_tracker.breakdown.llm_cost_usd
-            elif mode == 'agentic':
+            elif mode == "agentic":
                 print(f"   🤖 Running AGENTIC review (max {self.base_config.agentic_max_turns} turns)...")
                 reviewer = AgenticPRReviewer(config)
                 reviewer.max_turns = 8  # Budget setting for testing
@@ -147,11 +140,11 @@ class MatrixTester:
             try:
                 print("   🔍 Running quality validation...")
                 # Get PR data for validation
-                simple_reviewer = SimplePRReviewer(config)
-                owner, repo, pr_number = simple_reviewer.parse_pr_url(pr_url)
-                files = simple_reviewer.get_pr_files(owner, repo, pr_number)
-                pr_diff = simple_reviewer.get_pr_diff(owner, repo, pr_number)
-                changed_files = [f['filename'] for f in files]
+                standard_reviewer = PRReviewer(config)
+                owner, repo, pr_number = standard_reviewer.parse_pr_url(pr_url)
+                files = standard_reviewer.get_pr_files(owner, repo, pr_number)
+                pr_diff = standard_reviewer.get_pr_diff(owner, repo, pr_number)
+                changed_files = [f["filename"] for f in files]
 
                 validation = validate_review_quality(review, pr_diff, changed_files)
 
@@ -166,12 +159,16 @@ class MatrixTester:
                     review_content=review,
                     structural_score=validation.score,
                     structural_issues=validation.issues,
-                    structural_metrics=validation.metrics
+                    structural_metrics=validation.metrics,
                 )
 
-                print(f"   ✅ SUCCESS | Quality: {validation.score:.2f}/1.0 | Cost: ${cost:.3f} | Time: {duration:.1f}s")
+                print(
+                    f"   ✅ SUCCESS | Quality: {validation.score:.2f}/1.0 | Cost: ${cost:.3f} | Time: {duration:.1f}s"
+                )
                 if validation.issues:
-                    print(f"   ⚠️  Quality Issues: {', '.join(validation.issues[:2])}{'...' if len(validation.issues) > 2 else ''}")
+                    print(
+                        f"   ⚠️  Quality Issues: {', '.join(validation.issues[:2])}{'...' if len(validation.issues) > 2 else ''}"
+                    )
                 print(f"   📊 Metrics: {validation.metrics}")
                 print("")  # Add spacing
                 return result
@@ -190,7 +187,7 @@ class MatrixTester:
                     review_content=review,
                     structural_score=0.0,
                     structural_issues=[f"Validation failed: {e}"],
-                    structural_metrics={}
+                    structural_metrics={},
                 )
                 print("   ✅ Review completed but validation failed")
                 print("")  # Add spacing
@@ -213,7 +210,7 @@ class MatrixTester:
                 structural_score=0.0,
                 structural_issues=[],
                 structural_metrics={},
-                error=str(e)
+                error=str(e),
             )
 
     def run_matrix_test(self, pr_urls: List[str], include_opus_judging: bool = True) -> MatrixTestSuite:
@@ -250,7 +247,9 @@ class MatrixTester:
                     progress = (current_combination / total_combinations) * 100
                     elapsed = time.time() - start_time
 
-                    print(f"  📍 [{current_combination}/{total_combinations}] ({progress:.1f}%) | Elapsed: {elapsed/60:.1f}m")
+                    print(
+                        f"  📍 [{current_combination}/{total_combinations}] ({progress:.1f}%) | Elapsed: {elapsed / 60:.1f}m"
+                    )
 
                     result = self.run_single_test(pr_url, mode_id, provider, model, display_name)
                     self.test_results.append(result)
@@ -267,7 +266,7 @@ class MatrixTester:
 
                 mode_duration = time.time() - mode_start_time
                 print(f"🏁 {mode_name} Mode Complete:")
-                print(f"   ⏱️  Duration: {mode_duration/60:.1f} minutes")
+                print(f"   ⏱️  Duration: {mode_duration / 60:.1f} minutes")
                 print(f"   💰 Mode Cost: ${mode_cost:.4f}")
                 print(f"   ✅ Success: {mode_success}/{len(self.models)} | ❌ Failed: {mode_failed}/{len(self.models)}")
 
@@ -276,21 +275,23 @@ class MatrixTester:
                     avg_time_per_test = elapsed / current_combination
                     remaining_tests = total_combinations - current_combination
                     eta_seconds = remaining_tests * avg_time_per_test
-                    print(f"   ⏰ ETA: {eta_seconds/60:.1f} minutes remaining")
+                    print(f"   ⏰ ETA: {eta_seconds / 60:.1f} minutes remaining")
                 print("")
 
         # Print final summary before judging
         total_elapsed = time.time() - start_time
         print("\n🎉 All Reviews Complete!")
-        print(f"⏱️  Total Time: {total_elapsed/60:.1f} minutes")
+        print(f"⏱️  Total Time: {total_elapsed / 60:.1f} minutes")
         print(f"💰 Total Cost: ${total_cost:.4f}")
-        print(f"✅ Successful: {successful_tests}/{total_combinations} ({successful_tests/total_combinations*100:.1f}%)")
+        print(
+            f"✅ Successful: {successful_tests}/{total_combinations} ({successful_tests / total_combinations * 100:.1f}%)"
+        )
         if failed_tests > 0:
-            print(f"❌ Failed: {failed_tests}/{total_combinations} ({failed_tests/total_combinations*100:.1f}%)")
+            print(f"❌ Failed: {failed_tests}/{total_combinations} ({failed_tests / total_combinations * 100:.1f}%)")
 
         # Run Opus judging if requested
         if include_opus_judging:
-            print("\n" + "="*60)
+            print("\n" + "=" * 60)
             print("🧠 Running Opus Quality Assessment...")
             judging_start_time = time.time()
             self._run_opus_judging()
@@ -307,7 +308,7 @@ class MatrixTester:
         grand_total_time = time.time() - start_time
         print("\n🎉 Matrix Test Complete!")
         print(f"📊 Generated {len(self.test_results)} test results")
-        print(f"⏱️  Grand Total Time: {grand_total_time/60:.1f} minutes")
+        print(f"⏱️  Grand Total Time: {grand_total_time / 60:.1f} minutes")
         print(f"💰 Grand Total Cost: ${total_cost:.4f}")
 
         # Show quick insights
@@ -316,22 +317,28 @@ class MatrixTester:
             print(f"📈 Average cost per test: ${avg_cost:.4f}")
 
             # Show best structural scores
-            best_structural = max((r for r in self.test_results if r.success),
-                                key=lambda x: x.structural_score, default=None)
+            best_structural = max(
+                (r for r in self.test_results if r.success), key=lambda x: x.structural_score, default=None
+            )
             if best_structural:
-                print(f"🏆 Best structural score: {best_structural.structural_score:.2f} - {best_structural.provider} {best_structural.model} ({best_structural.mode})")
+                print(
+                    f"🏆 Best structural score: {best_structural.structural_score:.2f} - {best_structural.provider} {best_structural.model} ({best_structural.mode})"
+                )
 
             # Show cheapest successful test
-            cheapest = min((r for r in self.test_results if r.success),
-                          key=lambda x: x.cost, default=None)
+            cheapest = min((r for r in self.test_results if r.success), key=lambda x: x.cost, default=None)
             if cheapest:
-                print(f"💎 Cheapest test: ${cheapest.cost:.4f} - {cheapest.provider} {cheapest.model} ({cheapest.mode})")
+                print(
+                    f"💎 Cheapest test: ${cheapest.cost:.4f} - {cheapest.provider} {cheapest.model} ({cheapest.mode})"
+                )
 
             # Show any Opus scores if available
             opus_tests = [r for r in self.test_results if r.opus_score is not None]
             if opus_tests:
                 best_opus = max(opus_tests, key=lambda x: x.opus_score)
-                print(f"🧠 Best Opus score: {best_opus.opus_score}/10 - {best_opus.provider} {best_opus.model} ({best_opus.mode})")
+                print(
+                    f"🧠 Best Opus score: {best_opus.opus_score}/10 - {best_opus.provider} {best_opus.model} ({best_opus.mode})"
+                )
                 avg_opus = sum(r.opus_score for r in opus_tests) / len(opus_tests)
                 print(f"📊 Average Opus score: {avg_opus:.1f}/10 across {len(opus_tests)} reviews")
 
@@ -416,7 +423,7 @@ Format as JSON:
                             model=judge_model,
                             max_tokens=2000,
                             temperature=0.1,
-                            messages=[{"role": "user", "content": judging_prompt}]
+                            messages=[{"role": "user", "content": judging_prompt}],
                         )
                         content = response.content[0].text
                     else:
@@ -435,7 +442,7 @@ Format as JSON:
                             model=judge_model,
                             max_tokens=2000,
                             temperature=0.1,
-                            messages=[{"role": "user", "content": judging_prompt}]
+                            messages=[{"role": "user", "content": judging_prompt}],
                         )
                         content = response.choices[0].message.content
 
@@ -443,7 +450,8 @@ Format as JSON:
 
                     # Try to extract JSON
                     import re
-                    json_match = re.search(r'\{.*\}', content, re.DOTALL)
+
+                    json_match = re.search(r"\{.*\}", content, re.DOTALL)
                     if json_match:
                         try:
                             judgment = json.loads(json_match.group())
@@ -456,7 +464,9 @@ Format as JSON:
                                     pr_results[i].opus_score = score
                                     pr_results[i].opus_feedback = reasoning
 
-                                    model_name = f"{pr_results[i].provider} {pr_results[i].model} ({pr_results[i].mode})"
+                                    model_name = (
+                                        f"{pr_results[i].provider} {pr_results[i].model} ({pr_results[i].mode})"
+                                    )
                                     print(f"    📊 {model_name}: {score}/10 - {reasoning}")
 
                             print(f"    ✅ Successfully judged {len(judgment.get('reviews', []))} reviews")
@@ -488,7 +498,7 @@ Format as JSON:
                 summary_stats={"error": "No successful test runs"},
                 cost_analysis={},
                 quality_rankings={},
-                recommendations=["All tests failed - check configuration"]
+                recommendations=["All tests failed - check configuration"],
             )
 
         # Summary statistics
@@ -515,19 +525,24 @@ Format as JSON:
 
         # Calculate averages
         cost_analysis = {
-            "by_mode": {mode: {
-                "avg_cost": statistics.mean(costs),
-                "min_cost": min(costs),
-                "max_cost": max(costs),
-                "count": len(costs)
-            } for mode, costs in cost_by_mode.items()},
-
-            "by_model": {model: {
-                "avg_cost": statistics.mean(costs),
-                "min_cost": min(costs),
-                "max_cost": max(costs),
-                "count": len(costs)
-            } for model, costs in cost_by_model.items()}
+            "by_mode": {
+                mode: {
+                    "avg_cost": statistics.mean(costs),
+                    "min_cost": min(costs),
+                    "max_cost": max(costs),
+                    "count": len(costs),
+                }
+                for mode, costs in cost_by_mode.items()
+            },
+            "by_model": {
+                model: {
+                    "avg_cost": statistics.mean(costs),
+                    "min_cost": min(costs),
+                    "max_cost": max(costs),
+                    "count": len(costs),
+                }
+                for model, costs in cost_by_model.items()
+            },
         }
 
         # Quality rankings
@@ -542,10 +557,7 @@ Format as JSON:
                     structural_scores[key] = []
                 structural_scores[key].append(result.structural_score)
 
-            quality_rankings["structural"] = {
-                key: statistics.mean(scores)
-                for key, scores in structural_scores.items()
-            }
+            quality_rankings["structural"] = {key: statistics.mean(scores) for key, scores in structural_scores.items()}
 
         # Opus scores
         opus_results = [r for r in successful if r.opus_score is not None]
@@ -557,10 +569,7 @@ Format as JSON:
                     opus_scores[key] = []
                 opus_scores[key].append(result.opus_score)
 
-            quality_rankings["opus"] = {
-                key: statistics.mean(scores)
-                for key, scores in opus_scores.items()
-            }
+            quality_rankings["opus"] = {key: statistics.mean(scores) for key, scores in opus_scores.items()}
 
         # Generate recommendations
         recommendations = self._generate_recommendations(successful, cost_analysis, quality_rankings)
@@ -573,7 +582,7 @@ Format as JSON:
             "average_cost": avg_cost,
             "average_duration": avg_duration,
             "average_structural_score": avg_structural_score,
-            "opus_judged_tests": len(opus_results)
+            "opus_judged_tests": len(opus_results),
         }
 
         return MatrixTestSuite(
@@ -581,10 +590,12 @@ Format as JSON:
             summary_stats=summary_stats,
             cost_analysis=cost_analysis,
             quality_rankings=quality_rankings,
-            recommendations=recommendations
+            recommendations=recommendations,
         )
 
-    def _generate_recommendations(self, successful: List[TestResult], cost_analysis: Dict, quality_rankings: Dict) -> List[str]:
+    def _generate_recommendations(
+        self, successful: List[TestResult], cost_analysis: Dict, quality_rankings: Dict
+    ) -> List[str]:
         """Generate actionable recommendations based on test results."""
         recommendations = []
 
@@ -625,7 +636,9 @@ Format as JSON:
             if value_scores:
                 value_scores.sort(key=lambda x: x[1], reverse=True)
                 best_value = value_scores[0]
-                recommendations.append(f"💎 Best value: {best_value[0]} (quality {best_value[2]:.1f} for ${best_value[3]:.3f})")
+                recommendations.append(
+                    f"💎 Best value: {best_value[0]} (quality {best_value[2]:.1f} for ${best_value[3]:.3f})"
+                )
 
         return recommendations
 
@@ -637,21 +650,25 @@ Format as JSON:
             result_dict = asdict(result)
             serializable_results.append(result_dict)
 
-        with open(filepath, 'w') as f:
-            json.dump({
-                "test_results": serializable_results,
-                "timestamp": time.time(),
-                "summary": {
-                    "total_tests": len(self.test_results),
-                    "successful_tests": len([r for r in self.test_results if r.success])
-                }
-            }, f, indent=2)
+        with open(filepath, "w") as f:
+            json.dump(
+                {
+                    "test_results": serializable_results,
+                    "timestamp": time.time(),
+                    "summary": {
+                        "total_tests": len(self.test_results),
+                        "successful_tests": len([r for r in self.test_results if r.success]),
+                    },
+                },
+                f,
+                indent=2,
+            )
 
         print(f"💾 Results saved to {filepath}")
 
     def load_results(self, filepath: str):
         """Load test results from JSON file."""
-        with open(filepath, 'r') as f:
+        with open(filepath, "r") as f:
             data = json.load(f)
 
         self.test_results = []
@@ -666,14 +683,14 @@ def main():
     """CLI for matrix testing."""
     import argparse
 
-    parser = argparse.ArgumentParser(description='Matrix testing for PR reviews')
-    parser.add_argument('command', choices=['run', 'analyze', 'compare'])
-    parser.add_argument('--pr-urls', nargs='+', help='PR URLs to test')
-    parser.add_argument('--pr-list', help='File containing PR URLs')
-    parser.add_argument('--config', help='Config file path')
-    parser.add_argument('--output', help='Output file for results')
-    parser.add_argument('--load', help='Load previous results file')
-    parser.add_argument('--no-opus', action='store_true', help='Skip Opus judging')
+    parser = argparse.ArgumentParser(description="Matrix testing for PR reviews")
+    parser.add_argument("command", choices=["run", "analyze", "compare"])
+    parser.add_argument("--pr-urls", nargs="+", help="PR URLs to test")
+    parser.add_argument("--pr-list", help="File containing PR URLs")
+    parser.add_argument("--config", help="Config file path")
+    parser.add_argument("--output", help="Output file for results")
+    parser.add_argument("--load", help="Load previous results file")
+    parser.add_argument("--no-opus", action="store_true", help="Skip Opus judging")
 
     args = parser.parse_args()
 
@@ -681,12 +698,12 @@ def main():
     config = ReviewConfig.from_file(args.config) if args.config else ReviewConfig.from_file()
     tester = MatrixTester(config)
 
-    if args.command == 'run':
+    if args.command == "run":
         # Get PR URLs
         if args.pr_urls:
             pr_urls = args.pr_urls
         elif args.pr_list:
-            with open(args.pr_list, 'r') as f:
+            with open(args.pr_list, "r") as f:
                 pr_urls = [line.strip() for line in f if line.strip()]
         else:
             print("❌ Need --pr-urls or --pr-list")
@@ -712,7 +729,7 @@ def main():
         for rec in suite.recommendations:
             print(f"  {rec}")
 
-    elif args.command == 'analyze':
+    elif args.command == "analyze":
         if not args.load:
             print("❌ Need --load for analyze command")
             return
@@ -722,10 +739,10 @@ def main():
 
         print(f"📊 Analysis complete - {len(suite.recommendations)} recommendations")
 
-    elif args.command == 'compare':
+    elif args.command == "compare":
         print("🔄 Compare mode - load multiple result files and compare")
         # TODO: Implement comparison between different test runs
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

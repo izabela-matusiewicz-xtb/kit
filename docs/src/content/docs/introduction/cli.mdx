@@ -532,15 +532,15 @@ review:
 
 **Standard Mode (Recommended)**
 - Fast, comprehensive analysis with repository intelligence
-- Cost: $0.025-0.045 per typical PR
-- Speed: 15-30 seconds
+- Cost: $0.01-0.05 per typical PR (using Claude Sonnet 4)
+- Speed: 15-45 seconds
 - Uses kit's symbol analysis and cross-codebase impact assessment
 
 **Agentic Mode**
 - Multi-turn analysis with strategic tool usage
-- Budget config (8 turns): $0.20-0.30, exceptional depth
-- Thorough config (20 turns): $0.35-0.50, maximum analysis
-- Best for complex architectural changes
+- Budget config (8 turns): $0.36-0.80, experimental deep analysis
+- Thorough config (20 turns): $1.20-2.57, maximum analysis
+- Best for complex architectural changes or research
 
 #### Model Selection
 
@@ -605,17 +605,17 @@ jobs:
 **Real-world costs by team size:**
 
 *Small Team (20 PRs/month):*
-- Standard mode: $0.50-1.00/month
-- Mixed usage: $1.50-2.50/month
+- Standard mode: $0.20-1.00/month
+- Mixed usage: $1.00-5.00/month
 
 *Enterprise (500 PRs/month):*
-- Standard mode: $12.50-22.50/month  
-- Mixed usage: $40.00-60.00/month
+- Standard mode: $5.00-25.00/month  
+- Mixed usage: $25.00-150.00/month
 
 **Cost per PR by complexity:**
-- Simple (1-2 files): $0.01-0.03
-- Medium (3-5 files): $0.03-0.06
-- Complex (6+ files): $0.06-0.12
+- Simple (1-2 files): $0.005-0.025
+- Medium (3-5 files): $0.01-0.05
+- Complex (6+ files): $0.025-0.10
 
 #### Features
 

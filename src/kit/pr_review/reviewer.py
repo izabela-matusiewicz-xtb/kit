@@ -23,11 +23,13 @@ class PRReviewer:
     def __init__(self, config: ReviewConfig):
         self.config = config
         self.github_session = requests.Session()
-        self.github_session.headers.update({
-            "Authorization": f"token {config.github.token}",
-            "Accept": "application/vnd.github.v3+json",
-            "User-Agent": "kit-pr-reviewer/0.1.0"
-        })
+        self.github_session.headers.update(
+            {
+                "Authorization": f"token {config.github.token}",
+                "Accept": "application/vnd.github.v3+json",
+                "User-Agent": "kit-pr-reviewer/0.1.0",
+            }
+        )
         self._llm_client = None
         self.repo_cache = RepoCache(config)
         self.cost_tracker = CostTracker(config.custom_pricing)
@@ -129,31 +131,31 @@ class PRReviewer:
                 try:
                     # Try to get symbols from kit (may fail for new files)
                     file_symbols = repo.extract_symbols(file_path)
-                    kit_context['symbols'] = file_symbols
+                    kit_context["symbols"] = file_symbols
                 except Exception:
-                    kit_context['symbols'] = []
+                    kit_context["symbols"] = []
 
                 # Find usages of symbols defined in this file
                 symbol_usages = {}
-                for symbol in kit_context['symbols'][:5]:  # Limit to first 5 symbols
+                for symbol in kit_context["symbols"][:5]:  # Limit to first 5 symbols
                     try:
-                        usages = repo.find_symbol_usages(symbol['name'])
+                        usages = repo.find_symbol_usages(symbol["name"])
                         if len(usages) > 1:  # More than just the definition
-                            symbol_usages[symbol['name']] = len(usages) - 1
+                            symbol_usages[symbol["name"]] = len(usages) - 1
                     except Exception:
                         continue
 
                 file_analysis[file_path] = {
-                    'symbols': kit_context['symbols'],
-                    'symbol_usages': symbol_usages,
-                    'changes': f"+{file_info['additions']} -{file_info['deletions']}"
+                    "symbols": kit_context["symbols"],
+                    "symbol_usages": symbol_usages,
+                    "changes": f"+{file_info['additions']} -{file_info['deletions']}",
                 }
 
             except Exception:
                 file_analysis[file_path] = {
-                    'symbols': [],
-                    'symbol_usages': {},
-                    'changes': f"+{file_info['additions']} -{file_info['deletions']}"
+                    "symbols": [],
+                    "symbol_usages": {},
+                    "changes": f"+{file_info['additions']} -{file_info['deletions']}",
                 }
 
         # Get dependency analysis for the repository
@@ -167,8 +169,8 @@ class PRReviewer:
         try:
             # Get just a summary of file tree instead of full tree
             file_tree = repo.get_file_tree()
-            total_files = len([f for f in file_tree if not f.get('is_dir', True)])
-            total_dirs = len([f for f in file_tree if f.get('is_dir', False)])
+            total_files = len([f for f in file_tree if not f.get("is_dir", True)])
+            total_dirs = len([f for f in file_tree if f.get("is_dir", False)])
             repo_summary = f"{total_files} files in {total_dirs} directories"
         except Exception:
             repo_summary = "Repository structure unavailable"
@@ -177,13 +179,17 @@ class PRReviewer:
         analysis_summary = FilePrioritizer.get_analysis_summary(files, priority_files)
 
         # Create enhanced analysis prompt with kit's rich context
-        pr_status = "WIP" if "WIP" in pr_details['title'].upper() or "WORK IN PROGRESS" in pr_details['title'].upper() else "Ready for Review"
+        pr_status = (
+            "WIP"
+            if "WIP" in pr_details["title"].upper() or "WORK IN PROGRESS" in pr_details["title"].upper()
+            else "Ready for Review"
+        )
 
         analysis_prompt = f"""You are an expert code reviewer. Analyze this GitHub PR using the provided repository intelligence.
 
 **PR Information:**
-- Title: {pr_details['title']}
-- Author: {pr_details['user']['login']}
+- Title: {pr_details["title"]}
+- Author: {pr_details["user"]["login"]}
 - Files: {len(files)} changed
 - Status: {pr_status}
 
@@ -202,8 +208,8 @@ class PRReviewer:
 
         for file_path, analysis in file_analysis.items():
             analysis_prompt += f"""
-{file_path} ({analysis['changes']}) - {len(analysis['symbols'])} symbols
-{chr(10).join([f"- {name}: used in {count} places" for name, count in analysis['symbol_usages'].items()]) if analysis['symbol_usages'] else "- No widespread usage"}"""
+{file_path} ({analysis["changes"]}) - {len(analysis["symbols"])} symbols
+{chr(10).join([f"- {name}: used in {count} places" for name, count in analysis["symbol_usages"].items()]) if analysis["symbol_usages"] else "- No widespread usage"}"""
 
         analysis_prompt += f"""
 
@@ -244,19 +250,13 @@ class PRReviewer:
                 model=self.config.llm.model,
                 max_tokens=self.config.llm.max_tokens,
                 temperature=self.config.llm.temperature,
-                messages=[{
-                    "role": "user",
-                    "content": enhanced_prompt
-                }]
+                messages=[{"role": "user", "content": enhanced_prompt}],
             )
 
             # Track cost
             input_tokens, output_tokens = self.cost_tracker.extract_anthropic_usage(response)
             self.cost_tracker.track_llm_usage(
-                self.config.llm.provider,
-                self.config.llm.model,
-                input_tokens,
-                output_tokens
+                self.config.llm.provider, self.config.llm.model, input_tokens, output_tokens
             )
 
             return response.content[0].text
@@ -279,19 +279,13 @@ class PRReviewer:
                 model=self.config.llm.model,
                 max_tokens=self.config.llm.max_tokens,
                 temperature=self.config.llm.temperature,
-                messages=[{
-                    "role": "user",
-                    "content": enhanced_prompt
-                }]
+                messages=[{"role": "user", "content": enhanced_prompt}],
             )
 
             # Track cost
             input_tokens, output_tokens = self.cost_tracker.extract_openai_usage(response)
             self.cost_tracker.track_llm_usage(
-                self.config.llm.provider,
-                self.config.llm.model,
-                input_tokens,
-                output_tokens
+                self.config.llm.provider, self.config.llm.model, input_tokens, output_tokens
             )
 
             return response.choices[0].message.content
@@ -304,7 +298,7 @@ class PRReviewer:
         try:
             # Parse PR input
             owner, repo, pr_number = self.parse_pr_url(pr_input)
-            print(f"🛠️ Reviewing PR #{pr_number} in {owner}/{repo} [STANDARD MODE]")
+            print(f"🛠️ Reviewing PR #{pr_number} in {owner}/{repo} [STANDARD MODE - {self.config.llm.model}]")
 
             # Get PR details
             pr_details = self.get_pr_details(owner, repo, pr_number)
@@ -330,7 +324,7 @@ class PRReviewer:
                         # Validate review quality
                         try:
                             pr_diff = self.get_pr_diff(owner, repo, pr_number)
-                            changed_files = [f['filename'] for f in files]
+                            changed_files = [f["filename"] for f in files]
                             validation = validate_review_quality(analysis, pr_diff, changed_files)
 
                             print(f"📊 Review Quality Score: {validation.score:.2f}/1.0")
@@ -373,7 +367,9 @@ class PRReviewer:
         except Exception as e:
             raise RuntimeError(f"Review failed: {e}")
 
-    def _generate_intelligent_comment(self, pr_details: Dict[str, Any], files: list[Dict[str, Any]], analysis: str) -> str:
+    def _generate_intelligent_comment(
+        self, pr_details: Dict[str, Any], files: list[Dict[str, Any]], analysis: str
+    ) -> str:
         """Generate an intelligent review comment using LLM analysis."""
         comment = f"""## 🛠️ Kit AI Code Review
 
@@ -388,6 +384,7 @@ class PRReviewer:
         """Get kit version for review attribution."""
         try:
             import kit
-            return getattr(kit, '__version__', 'dev')
+
+            return getattr(kit, "__version__", "dev")
         except Exception:
-            return 'dev'
+            return "dev"

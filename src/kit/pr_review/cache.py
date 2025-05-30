@@ -54,9 +54,9 @@ class RepoCache:
 
         # Check if we have the target SHA
         try:
-            result = subprocess.run([
-                "git", "-C", str(repo_path), "cat-file", "-e", target_sha
-            ], capture_output=True, check=False)
+            result = subprocess.run(
+                ["git", "-C", str(repo_path), "cat-file", "-e", target_sha], capture_output=True, check=False
+            )
             return result.returncode == 0
         except subprocess.SubprocessError:
             return False
@@ -69,9 +69,7 @@ class RepoCache:
             print(f"Updating cached repository: {repo_path}")
             try:
                 # Fetch latest changes
-                subprocess.run([
-                    "git", "-C", str(repo_path), "fetch", "origin"
-                ], check=True, capture_output=True)
+                subprocess.run(["git", "-C", str(repo_path), "fetch", "origin"], check=True, capture_output=True)
 
                 # Try to checkout the target SHA
                 self._checkout_sha(repo_path, sha)
@@ -90,9 +88,7 @@ class RepoCache:
         print(f"Cloning repository to cache: {repo_path}")
         repo_path.parent.mkdir(parents=True, exist_ok=True)
 
-        subprocess.run([
-            "git", "clone", "--depth", "50", repo_url, str(repo_path)
-        ], check=True, capture_output=True)
+        subprocess.run(["git", "clone", "--depth", "50", repo_url, str(repo_path)], check=True, capture_output=True)
 
         self._checkout_sha(repo_path, sha)
         return str(repo_path)
@@ -101,17 +97,11 @@ class RepoCache:
         """Checkout specific SHA in the repository."""
         try:
             # First try to checkout directly
-            subprocess.run([
-                "git", "-C", str(repo_path), "checkout", sha
-            ], check=True, capture_output=True)
+            subprocess.run(["git", "-C", str(repo_path), "checkout", sha], check=True, capture_output=True)
         except subprocess.CalledProcessError:
             # If that fails, fetch and try again
-            subprocess.run([
-                "git", "-C", str(repo_path), "fetch", "origin", sha
-            ], check=True, capture_output=True)
-            subprocess.run([
-                "git", "-C", str(repo_path), "checkout", sha
-            ], check=True, capture_output=True)
+            subprocess.run(["git", "-C", str(repo_path), "fetch", "origin", sha], check=True, capture_output=True)
+            subprocess.run(["git", "-C", str(repo_path), "checkout", sha], check=True, capture_output=True)
 
     def _clone_to_temp(self, owner: str, repo: str, sha: str) -> str:
         """Clone repository to temporary directory (no caching)."""
@@ -121,9 +111,7 @@ class RepoCache:
         temp_dir = Path(tempfile.mkdtemp())
         repo_path = temp_dir / f"{owner}-{repo}"
 
-        subprocess.run([
-            "git", "clone", "--depth", "50", repo_url, str(repo_path)
-        ], check=True, capture_output=True)
+        subprocess.run(["git", "clone", "--depth", "50", repo_url, str(repo_path)], check=True, capture_output=True)
 
         self._checkout_sha(repo_path, sha)
         return str(repo_path)
@@ -134,9 +122,9 @@ class RepoCache:
             return
 
         # Get cache size
-        total_size = sum(
-            f.stat().st_size for f in self.cache_dir.rglob('*') if f.is_file()
-        ) / (1024 ** 3)  # Convert to GB
+        total_size = sum(f.stat().st_size for f in self.cache_dir.rglob("*") if f.is_file()) / (
+            1024**3
+        )  # Convert to GB
 
         print(f"Cache size: {total_size:.2f} GB")
 
@@ -160,9 +148,7 @@ class RepoCache:
                     break
 
                 print(f"Removing old cache: {repo_dir}")
-                repo_size = sum(
-                    f.stat().st_size for f in repo_dir.rglob('*') if f.is_file()
-                ) / (1024 ** 3)
+                repo_size = sum(f.stat().st_size for f in repo_dir.rglob("*") if f.is_file()) / (1024**3)
 
                 shutil.rmtree(repo_dir)
                 total_size -= repo_size

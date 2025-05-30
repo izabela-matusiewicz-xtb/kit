@@ -19,11 +19,13 @@ class AgenticPRReviewer:
     def __init__(self, config: ReviewConfig):
         self.config = config
         self.github_session = requests.Session()
-        self.github_session.headers.update({
-            "Authorization": f"token {config.github.token}",
-            "Accept": "application/vnd.github.v3+json",
-            "User-Agent": "kit-agentic-reviewer/0.1.0"
-        })
+        self.github_session.headers.update(
+            {
+                "Authorization": f"token {config.github.token}",
+                "Accept": "application/vnd.github.v3+json",
+                "User-Agent": "kit-agentic-reviewer/0.1.0",
+            }
+        )
         self._llm_client = None
         self.repo_cache = RepoCache(config)
         self.cost_tracker = CostTracker(config.custom_pricing)
@@ -31,8 +33,8 @@ class AgenticPRReviewer:
         self.analysis_state = {}
 
         # Customizable turn limit - default to 15 for reasonble completion rate
-        self.max_turns = getattr(config, 'agentic_max_turns', 15)
-        self.finalize_threshold = getattr(config, 'agentic_finalize_threshold', 10)
+        self.max_turns = getattr(config, "agentic_max_turns", 15)
+        self.finalize_threshold = getattr(config, "agentic_finalize_threshold", 10)
 
     def parse_pr_url(self, pr_input: str) -> tuple[str, str, int]:
         """Parse PR URL to extract owner, repo, and PR number."""
@@ -79,6 +81,7 @@ class AgenticPRReviewer:
         """Get kit's tools plus our PR-specific analysis tools."""
         try:
             from kit.tool_schemas import get_tool_schemas
+
             # Get all kit's existing tool schemas
             kit_tools_raw = get_tool_schemas()
 
@@ -90,7 +93,7 @@ class AgenticPRReviewer:
                 anthropic_tool = {
                     "name": tool["name"],
                     "description": tool["description"],
-                    "input_schema": tool["inputSchema"]  # Convert camelCase to snake_case
+                    "input_schema": tool["inputSchema"],  # Convert camelCase to snake_case
                 }
                 kit_tools.append(anthropic_tool)
 
@@ -105,13 +108,10 @@ class AgenticPRReviewer:
                 "input_schema": {
                     "type": "object",
                     "properties": {
-                        "review_content": {
-                            "type": "string",
-                            "description": "The final comprehensive review content"
-                        }
+                        "review_content": {"type": "string", "description": "The final comprehensive review content"}
                     },
-                    "required": ["review_content"]
-                }
+                    "required": ["review_content"],
+                },
             },
             {
                 "name": "get_relevant_chunks",
@@ -121,10 +121,10 @@ class AgenticPRReviewer:
                     "properties": {
                         "file_path": {"type": "string", "description": "Path to the file to chunk"},
                         "relevance_query": {"type": "string", "description": "What to look for in chunks"},
-                        "max_chunks": {"type": "integer", "description": "Maximum chunks to return", "default": 3}
+                        "max_chunks": {"type": "integer", "description": "Maximum chunks to return", "default": 3},
                     },
-                    "required": ["file_path", "relevance_query"]
-                }
+                    "required": ["file_path", "relevance_query"],
+                },
             },
             {
                 "name": "batch_analyze_files",
@@ -134,10 +134,10 @@ class AgenticPRReviewer:
                     "properties": {
                         "file_paths": {"type": "array", "items": {"type": "string"}},
                         "include_symbols": {"type": "boolean", "default": True},
-                        "max_content_length": {"type": "integer", "default": 3000}
+                        "max_content_length": {"type": "integer", "default": 3000},
                     },
-                    "required": ["file_paths"]
-                }
+                    "required": ["file_paths"],
+                },
             },
             {
                 "name": "deep_code_analysis",
@@ -149,11 +149,11 @@ class AgenticPRReviewer:
                         "analysis_focus": {
                             "type": "array",
                             "items": {"type": "string"},
-                            "default": ["security", "performance", "maintainability", "correctness"]
-                        }
+                            "default": ["security", "performance", "maintainability", "correctness"],
+                        },
                     },
-                    "required": ["file_path"]
-                }
+                    "required": ["file_path"],
+                },
             },
             {
                 "name": "analyze_cross_file_impact",
@@ -162,11 +162,15 @@ class AgenticPRReviewer:
                     "type": "object",
                     "properties": {
                         "changed_files": {"type": "array", "items": {"type": "string"}},
-                        "impact_depth": {"type": "string", "enum": ["immediate", "extended", "full"], "default": "extended"}
+                        "impact_depth": {
+                            "type": "string",
+                            "enum": ["immediate", "extended", "full"],
+                            "default": "extended",
+                        },
                     },
-                    "required": ["changed_files"]
-                }
-            }
+                    "required": ["changed_files"],
+                },
+            },
         ]
 
         return kit_tools + pr_specific_tools
@@ -174,7 +178,7 @@ class AgenticPRReviewer:
     async def _execute_tool(self, tool_name: str, parameters: Dict[str, Any]) -> str:
         """Execute a tool call using kit's Repository class."""
         try:
-            repo = self.analysis_state.get('repo')
+            repo = self.analysis_state.get("repo")
             if not repo:
                 return "Error: Repository not initialized"
 
@@ -222,7 +226,11 @@ class AgenticPRReviewer:
             elif tool_name == "get_file_tree":
                 # Kit expects: repo_id | We have: (no params needed)
                 tree = repo.get_file_tree()
-                return f"File tree ({len(tree)} files):\n" + json.dumps(tree[:50], indent=2) + (f"\n... and {len(tree) - 50} more files" if len(tree) > 50 else "")
+                return (
+                    f"File tree ({len(tree)} files):\n"
+                    + json.dumps(tree[:50], indent=2)
+                    + (f"\n... and {len(tree) - 50} more files" if len(tree) > 50 else "")
+                )
 
             elif tool_name == "get_code_summary":
                 # Kit expects: repo_id, file_path, symbol_name | We have: file_path, symbol_name
@@ -248,7 +256,7 @@ class AgenticPRReviewer:
                     git_info = {
                         "current_sha": repo.current_sha,
                         "current_branch": repo.current_branch,
-                        "remote_url": getattr(repo, 'remote_url', 'unknown')
+                        "remote_url": getattr(repo, "remote_url", "unknown"),
                     }
                     return "Git info:\n" + json.dumps(git_info, indent=2)
                 except Exception as e:
@@ -270,22 +278,20 @@ class AgenticPRReviewer:
                 chunks = repo.chunk_file_by_symbols(parameters["file_path"])
                 result = f"Symbol chunks for {parameters['file_path']} ({len(chunks)} chunks):\n"
                 for i, chunk in enumerate(chunks[:3]):
-                    result += f"\nChunk {i+1}:\n{chunk.content}\n---\n"
+                    result += f"\nChunk {i + 1}:\n{chunk.content}\n---\n"
                 if len(chunks) > 3:
                     result += f"\n... and {len(chunks) - 3} more chunks"
                 return result
 
             elif tool_name == "extract_context_around_line":
                 context = repo.extract_context_around_line(
-                    parameters["file_path"],
-                    parameters["line_number"],
-                    parameters.get("context_lines", 10)
+                    parameters["file_path"], parameters["line_number"], parameters.get("context_lines", 10)
                 )
                 return f"Context around line {parameters['line_number']} in {parameters['file_path']}:\n```\n{context}\n```"
 
             # PR-specific analysis tools
             elif tool_name == "finalize_review":
-                self.analysis_state['final_review'] = parameters["review_content"]
+                self.analysis_state["final_review"] = parameters["review_content"]
                 return "Review finalized successfully"
 
             elif tool_name == "get_relevant_chunks":
@@ -318,7 +324,9 @@ class AgenticPRReviewer:
             content_lower = chunk.content.lower()
             score = sum(content_lower.count(word) for word in relevance_query.split())
             # Boost for function/class definitions
-            if any(f"def {word}" in content_lower or f"class {word}" in content_lower for word in relevance_query.split()):
+            if any(
+                f"def {word}" in content_lower or f"class {word}" in content_lower for word in relevance_query.split()
+            ):
                 score += 10
             scored_chunks.append((score, i, chunk))
 
@@ -329,7 +337,7 @@ class AgenticPRReviewer:
         result = f"Relevant chunks for '{relevance_query}' in {parameters['file_path']}:\n"
         for score, chunk_idx, chunk in relevant_chunks:
             if score > 0:
-                result += f"\nChunk {chunk_idx+1}:\n{chunk.content}\n---\n"
+                result += f"\nChunk {chunk_idx + 1}:\n{chunk.content}\n---\n"
 
         if not any(score > 0 for score, _, _ in relevant_chunks):
             result += f"\nNo chunks found matching '{relevance_query}'"
@@ -387,7 +395,7 @@ class AgenticPRReviewer:
         try:
             content = repo.get_file_content(file_path)
             symbols = repo.extract_symbols(file_path)
-            lines = content.split('\n')
+            lines = content.split("\n")
 
             for focus in analysis_focus:
                 result += f"## {focus.title()} Analysis\n"
@@ -396,9 +404,12 @@ class AgenticPRReviewer:
                     issues = []
                     for i, line in enumerate(lines, 1):
                         line_lower = line.lower()
-                        if any(pattern in line_lower for pattern in ['eval(', 'exec(', 'subprocess.', 'os.system']):
+                        if any(pattern in line_lower for pattern in ["eval(", "exec(", "subprocess.", "os.system"]):
                             issues.append(f"Line {i}: Potential code execution risk")
-                        if any(pattern in line_lower for pattern in ['password', 'secret', 'token', 'api_key']) and '=' in line:
+                        if (
+                            any(pattern in line_lower for pattern in ["password", "secret", "token", "api_key"])
+                            and "=" in line
+                        ):
                             issues.append(f"Line {i}: Potential hardcoded credential")
 
                     if issues:
@@ -412,9 +423,13 @@ class AgenticPRReviewer:
                     issues = []
                     for i, line in enumerate(lines, 1):
                         line_lower = line.lower()
-                        if 'for' in line_lower and 'in' in line_lower and any(pattern in line_lower for pattern in ['.find(', '.index(']):
+                        if (
+                            "for" in line_lower
+                            and "in" in line_lower
+                            and any(pattern in line_lower for pattern in [".find(", ".index("])
+                        ):
                             issues.append(f"Line {i}: Potential O(n²) operation")
-                        if any(pattern in line_lower for pattern in ['time.sleep(', 'sleep(']):
+                        if any(pattern in line_lower for pattern in ["time.sleep(", "sleep("]):
                             issues.append(f"Line {i}: Blocking sleep operation")
 
                     if issues:
@@ -427,12 +442,18 @@ class AgenticPRReviewer:
                 elif focus == "maintainability":
                     issues = []
                     for symbol in symbols:
-                        if symbol.get('type') == 'function':
-                            func_content = symbol.get('code', '')
+                        if symbol.get("type") == "function":
+                            func_content = symbol.get("code", "")
                             if func_content:
-                                complexity = func_content.count('if ') + func_content.count('for ') + func_content.count('while ')
+                                complexity = (
+                                    func_content.count("if ")
+                                    + func_content.count("for ")
+                                    + func_content.count("while ")
+                                )
                                 if complexity > 10:
-                                    issues.append(f"Function '{symbol.get('name')}': High complexity ({complexity} branches)")
+                                    issues.append(
+                                        f"Function '{symbol.get('name')}': High complexity ({complexity} branches)"
+                                    )
 
                     if issues:
                         result += "Maintainability concerns found:\n"
@@ -445,9 +466,9 @@ class AgenticPRReviewer:
                     issues = []
                     for i, line in enumerate(lines, 1):
                         line_stripped = line.strip()
-                        if 'except:' in line_stripped and i < len(lines) and 'pass' in lines[i].strip():
+                        if "except:" in line_stripped and i < len(lines) and "pass" in lines[i].strip():
                             issues.append(f"Line {i}: Silent exception handling")
-                        if '==' in line_stripped and 'None' in line_stripped:
+                        if "==" in line_stripped and "None" in line_stripped:
                             issues.append(f"Line {i}: Use 'is None' instead of '== None'")
 
                     if issues:
@@ -485,11 +506,11 @@ class AgenticPRReviewer:
 
                     # Check symbol usage across codebase
                     for symbol in symbols[:5]:  # Check first 5 symbols
-                        symbol_name = symbol.get('name', '')
+                        symbol_name = symbol.get("name", "")
                         if symbol_name:
                             try:
                                 usages = repo.find_symbol_usages(symbol_name)
-                                external = [u for u in usages if u.get('file') != file_path]
+                                external = [u for u in usages if u.get("file") != file_path]
                                 external_usages += len(external)
                                 if external:
                                     result += f"- {symbol_name}: used in {len(external)} other places\n"
@@ -498,15 +519,15 @@ class AgenticPRReviewer:
 
                     # Determine risk level
                     if external_usages > 20:
-                        risk = 'high'
+                        risk = "high"
                         high_risk_files.append(file_path)
                     elif external_usages > 5:
-                        risk = 'medium'
+                        risk = "medium"
                         medium_risk_files.append(file_path)
                     else:
-                        risk = 'low'
+                        risk = "low"
 
-                    risk_emoji = {'low': '🟢', 'medium': '🟡', 'high': '🔴'}
+                    risk_emoji = {"low": "🟢", "medium": "🟡", "high": "🔴"}
                     result += f"Risk Assessment: {risk_emoji[risk]} {risk.upper()}\n"
 
                 except Exception as e:
@@ -551,20 +572,26 @@ class AgenticPRReviewer:
 
             # If we're near the end, encourage finalization more aggressively
             if turn >= max_turns - 3:  # Last 3 turns
-                messages.append({
-                    "role": "user",
-                    "content": f"URGENT: You are on turn {turn} of {max_turns}. You MUST finalize your review NOW using the finalize_review tool. Do not use any other tools."
-                })
+                messages.append(
+                    {
+                        "role": "user",
+                        "content": f"URGENT: You are on turn {turn} of {max_turns}. You MUST finalize your review NOW using the finalize_review tool. Do not use any other tools.",
+                    }
+                )
             elif turn >= self.finalize_threshold:
-                messages.append({
-                    "role": "user",
-                    "content": f"You are on turn {turn} of {max_turns}. Please finalize your review soon using the finalize_review tool with your comprehensive analysis."
-                })
+                messages.append(
+                    {
+                        "role": "user",
+                        "content": f"You are on turn {turn} of {max_turns}. Please finalize your review soon using the finalize_review tool with your comprehensive analysis.",
+                    }
+                )
 
             try:
+
                 async def make_api_call():
                     # Anthropic client is synchronous, so we need to run it in a thread
                     import asyncio
+
                     loop = asyncio.get_event_loop()
                     return await loop.run_in_executor(
                         None,
@@ -573,8 +600,8 @@ class AgenticPRReviewer:
                             max_tokens=self.config.llm.max_tokens,
                             temperature=self.config.llm.temperature,
                             tools=tools,
-                            messages=messages
-                        )
+                            messages=messages,
+                        ),
                     )
 
                 response = await retry_with_backoff(make_api_call)
@@ -582,10 +609,7 @@ class AgenticPRReviewer:
                 # Track cost
                 input_tokens, output_tokens = self.cost_tracker.extract_anthropic_usage(response)
                 self.cost_tracker.track_llm_usage(
-                    self.config.llm.provider,
-                    self.config.llm.model,
-                    input_tokens,
-                    output_tokens
+                    self.config.llm.provider, self.config.llm.model, input_tokens, output_tokens
                 )
 
                 # Collect all tool calls and text content
@@ -596,10 +620,7 @@ class AgenticPRReviewer:
                 # Process all content blocks
                 for content_block in response.content:
                     if content_block.type == "text":
-                        assistant_message["content"].append({
-                            "type": "text",
-                            "text": content_block.text
-                        })
+                        assistant_message["content"].append({"type": "text", "text": content_block.text})
                         print(f"💭 Agent thinking: {content_block.text[:200]}...")
                         has_text_content = True
 
@@ -611,12 +632,9 @@ class AgenticPRReviewer:
                         print(f"🔧 Agent using tool: {tool_name} with {tool_input}")
 
                         # Add tool use to assistant message
-                        assistant_message["content"].append({
-                            "type": "tool_use",
-                            "id": tool_use_id,
-                            "name": tool_name,
-                            "input": tool_input
-                        })
+                        assistant_message["content"].append(
+                            {"type": "tool_use", "id": tool_use_id, "name": tool_name, "input": tool_input}
+                        )
 
                         # Collect for parallel execution
                         tool_calls.append((tool_name, tool_input, tool_use_id))
@@ -626,13 +644,12 @@ class AgenticPRReviewer:
 
                 # Execute all tool calls in parallel if any exist
                 if tool_calls:
-                    print(f"🚀 Executing {len(tool_calls)} {'tool' if len(tool_calls) == 1 else 'tools'} in parallel...")
+                    print(
+                        f"🚀 Executing {len(tool_calls)} {'tool' if len(tool_calls) == 1 else 'tools'} in parallel..."
+                    )
 
                     # Execute tools in parallel
-                    tool_tasks = [
-                        self._execute_tool(tool_name, tool_input)
-                        for tool_name, tool_input, _ in tool_calls
-                    ]
+                    tool_tasks = [self._execute_tool(tool_name, tool_input) for tool_name, tool_input, _ in tool_calls]
                     tool_results = await asyncio.gather(*tool_tasks, return_exceptions=True)
 
                     # Create tool result messages
@@ -645,25 +662,20 @@ class AgenticPRReviewer:
                         else:
                             result_text = result
 
-                        tool_result_contents.append({
-                            "type": "tool_result",
-                            "tool_use_id": tool_use_id,
-                            "content": result_text
-                        })
+                        tool_result_contents.append(
+                            {"type": "tool_result", "tool_use_id": tool_use_id, "content": result_text}
+                        )
 
                         # Check if finalize_review was called
                         if tool_name == "finalize_review":
                             finalize_called = True
 
                     # Add all tool results as a single user message
-                    messages.append({
-                        "role": "user",
-                        "content": tool_result_contents
-                    })
+                    messages.append({"role": "user", "content": tool_result_contents})
 
                     # If finalize_review was called, return the final review
                     if finalize_called:
-                        return self.analysis_state.get('final_review', "Review finalized")
+                        return self.analysis_state.get("final_review", "Review finalized")
 
                 # If no tool calls and we have text content, this might be the final response
                 elif has_text_content:
@@ -688,11 +700,17 @@ class AgenticPRReviewer:
         if not self._llm_client:
             self._llm_client = openai.OpenAI(api_key=self.config.llm.api_key)
 
-        tools = [{"type": "function", "function": {
-            "name": tool["name"],
-            "description": tool["description"],
-            "parameters": tool["input_schema"]
-        }} for tool in self._get_available_tools()]
+        tools = [
+            {
+                "type": "function",
+                "function": {
+                    "name": tool["name"],
+                    "description": tool["description"],
+                    "parameters": tool["input_schema"],
+                },
+            }
+            for tool in self._get_available_tools()
+        ]
         messages = [{"role": "user", "content": initial_prompt}]
 
         max_turns = self.max_turns
@@ -704,20 +722,26 @@ class AgenticPRReviewer:
 
             # If we're near the end, encourage finalization more aggressively
             if turn >= max_turns - 3:  # Last 3 turns
-                messages.append({
-                    "role": "user",
-                    "content": f"URGENT: You are on turn {turn} of {max_turns}. You MUST finalize your review NOW using the finalize_review tool. Do not use any other tools."
-                })
+                messages.append(
+                    {
+                        "role": "user",
+                        "content": f"URGENT: You are on turn {turn} of {max_turns}. You MUST finalize your review NOW using the finalize_review tool. Do not use any other tools.",
+                    }
+                )
             elif turn >= self.finalize_threshold:
-                messages.append({
-                    "role": "user",
-                    "content": f"You are on turn {turn} of {max_turns}. Please finalize your review soon using the finalize_review tool with your comprehensive analysis."
-                })
+                messages.append(
+                    {
+                        "role": "user",
+                        "content": f"You are on turn {turn} of {max_turns}. Please finalize your review soon using the finalize_review tool with your comprehensive analysis.",
+                    }
+                )
 
             try:
+
                 async def make_api_call():
                     # OpenAI client is also synchronous
                     import asyncio
+
                     loop = asyncio.get_event_loop()
                     return await loop.run_in_executor(
                         None,
@@ -726,8 +750,8 @@ class AgenticPRReviewer:
                             max_tokens=self.config.llm.max_tokens,
                             temperature=self.config.llm.temperature,
                             tools=tools,
-                            messages=messages
-                        )
+                            messages=messages,
+                        ),
                     )
 
                 response = await retry_with_backoff(make_api_call)
@@ -735,17 +759,16 @@ class AgenticPRReviewer:
                 # Track cost
                 input_tokens, output_tokens = self.cost_tracker.extract_openai_usage(response)
                 self.cost_tracker.track_llm_usage(
-                    self.config.llm.provider,
-                    self.config.llm.model,
-                    input_tokens,
-                    output_tokens
+                    self.config.llm.provider, self.config.llm.model, input_tokens, output_tokens
                 )
 
                 message = response.choices[0].message
                 messages.append(message)
 
                 if message.tool_calls:
-                    print(f"🚀 Executing {len(message.tool_calls)} {'tool' if len(message.tool_calls) == 1 else 'tools'} in parallel...")
+                    print(
+                        f"🚀 Executing {len(message.tool_calls)} {'tool' if len(message.tool_calls) == 1 else 'tools'} in parallel..."
+                    )
 
                     # Execute all tool calls in parallel
                     tool_tasks = []
@@ -772,18 +795,14 @@ class AgenticPRReviewer:
                         else:
                             result_text = result
 
-                        messages.append({
-                            "role": "tool",
-                            "tool_call_id": tool_call_id,
-                            "content": result_text
-                        })
+                        messages.append({"role": "tool", "tool_call_id": tool_call_id, "content": result_text})
 
                         if tool_name == "finalize_review":
                             finalize_called = True
 
                     # If finalize_review was called, return the final review
                     if finalize_called:
-                        return self.analysis_state.get('final_review', "Review finalized")
+                        return self.analysis_state.get("final_review", "Review finalized")
                 else:
                     # No tool calls, return the content
                     return message.content or "Analysis completed"
@@ -799,7 +818,7 @@ class AgenticPRReviewer:
 
         # Initialize repository and state
         repo = Repository(repo_path)
-        self.analysis_state['repo'] = repo
+        self.analysis_state["repo"] = repo
 
         # Get basic context
         try:
@@ -824,14 +843,18 @@ class AgenticPRReviewer:
         except Exception as e:
             pr_diff = f"Error retrieving diff: {e}"
 
-        pr_status = "WIP" if "WIP" in pr_details['title'].upper() or "WORK IN PROGRESS" in pr_details['title'].upper() else "Ready for Review"
+        pr_status = (
+            "WIP"
+            if "WIP" in pr_details["title"].upper() or "WORK IN PROGRESS" in pr_details["title"].upper()
+            else "Ready for Review"
+        )
 
         # Create initial prompt for agentic analysis
         initial_prompt = f"""You are an expert code reviewer. Analyze this GitHub PR efficiently and provide a focused review.
 
 **PR Information:**
-- Title: {pr_details['title']}
-- Author: {pr_details['user']['login']}
+- Title: {pr_details["title"]}
+- Author: {pr_details["user"]["login"]}
 - Files: {len(files)} changed
 - Status: {pr_status}
 
@@ -889,7 +912,9 @@ Keep it focused and valuable. Begin your analysis.
         try:
             # Parse PR input
             owner, repo, pr_number = self.parse_pr_url(pr_input)
-            print(f"🤖 Reviewing PR #{pr_number} in {owner}/{repo} [AGENTIC MODE - {self.max_turns} turns]")
+            print(
+                f"🤖 Reviewing PR #{pr_number} in {owner}/{repo} [AGENTIC MODE - {self.max_turns} turns - {self.config.llm.model}]"
+            )
 
             # Get PR details
             pr_details = self.get_pr_details(owner, repo, pr_number)
@@ -948,9 +973,11 @@ Keep it focused and valuable. Begin your analysis.
         """Get kit version for comment attribution."""
         try:
             import kit
-            return getattr(kit, '__version__', 'dev')
+
+            return getattr(kit, "__version__", "dev")
         except Exception:
-            return 'dev'
+            return "dev"
+
 
 async def retry_with_backoff(func, max_retries=3, base_delay=1.0, max_delay=60.0):
     """Retry function with exponential backoff for API rate limiting."""
@@ -960,9 +987,9 @@ async def retry_with_backoff(func, max_retries=3, base_delay=1.0, max_delay=60.0
         except Exception as e:
             error_str = str(e)
             # Check for rate limiting or overload errors
-            if any(keyword in error_str.lower() for keyword in ['overloaded', 'rate limit', '529', '503', '502']):
+            if any(keyword in error_str.lower() for keyword in ["overloaded", "rate limit", "529", "503", "502"]):
                 if attempt < max_retries - 1:
-                    delay = min(base_delay * (2 ** attempt), max_delay)
+                    delay = min(base_delay * (2**attempt), max_delay)
                     print(f"⏳ API overloaded (attempt {attempt + 1}/{max_retries}), retrying in {delay:.1f}s...")
                     await asyncio.sleep(delay)
                     continue

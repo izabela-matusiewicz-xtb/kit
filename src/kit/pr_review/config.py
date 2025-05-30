@@ -11,12 +11,14 @@ import yaml
 
 class LLMProvider(Enum):
     """Supported LLM providers."""
+
     ANTHROPIC = "anthropic"
     OPENAI = "openai"
 
 
 class ReviewDepth(Enum):
     """Review analysis depth levels."""
+
     QUICK = "quick"
     STANDARD = "standard"
     THOROUGH = "thorough"
@@ -25,6 +27,7 @@ class ReviewDepth(Enum):
 @dataclass
 class GitHubConfig:
     """GitHub configuration."""
+
     token: str
     base_url: str = "https://api.github.com"
 
@@ -32,6 +35,7 @@ class GitHubConfig:
 @dataclass
 class LLMConfig:
     """LLM configuration."""
+
     provider: LLMProvider
     model: str
     api_key: str
@@ -42,6 +46,7 @@ class LLMConfig:
 @dataclass
 class ReviewConfig:
     """Complete review configuration."""
+
     github: GitHubConfig
     llm: LLMConfig
     max_files: int = 50
@@ -68,13 +73,15 @@ class ReviewConfig:
         # Try to load from file
         config_file = Path(config_path)
         if config_file.exists():
-            with open(config_file, 'r') as f:
+            with open(config_file, "r") as f:
                 config_data = yaml.safe_load(f) or {}
 
         # Override with environment variables
         github_config = GitHubConfig(
-            token=config_data.get("github", {}).get("token") or os.getenv("KIT_GITHUB_TOKEN") or os.getenv("GITHUB_TOKEN"),
-            base_url=config_data.get("github", {}).get("base_url", "https://api.github.com")
+            token=config_data.get("github", {}).get("token")
+            or os.getenv("KIT_GITHUB_TOKEN")
+            or os.getenv("GITHUB_TOKEN"),
+            base_url=config_data.get("github", {}).get("base_url", "https://api.github.com"),
         )
 
         if not github_config.token:
@@ -107,7 +114,7 @@ class ReviewConfig:
             model=llm_data.get("model", default_model),
             api_key=api_key,
             max_tokens=llm_data.get("max_tokens", 4000),
-            temperature=llm_data.get("temperature", 0.1)
+            temperature=llm_data.get("temperature", 0.1),
         )
 
         if not llm_config.api_key:
@@ -136,7 +143,7 @@ class ReviewConfig:
             cache_ttl_hours=review_data.get("cache_ttl_hours", 24),
             custom_pricing=review_data.get("custom_pricing", None),
             agentic_max_turns=review_data.get("agentic_max_turns", 20),
-            agentic_finalize_threshold=review_data.get("agentic_finalize_threshold", 15)
+            agentic_finalize_threshold=review_data.get("agentic_finalize_threshold", 15),
         )
 
     def create_default_config_file(self, config_path: Optional[str] = None) -> str:
@@ -148,16 +155,13 @@ class ReviewConfig:
         config_dir.mkdir(parents=True, exist_ok=True)
 
         default_config = {
-            "github": {
-                "token": "ghp_your_token_here",
-                "base_url": "https://api.github.com"
-            },
+            "github": {"token": "ghp_your_token_here", "base_url": "https://api.github.com"},
             "llm": {
                 "provider": "anthropic",  # or "openai"
                 "model": "claude-sonnet-4-20250514",  # or "gpt-4o"
                 "api_key": "sk-your_api_key_here",
                 "max_tokens": 4000,
-                "temperature": 0.1
+                "temperature": 0.1,
             },
             "review": {
                 "max_files": 50,
@@ -185,10 +189,10 @@ class ReviewConfig:
                 #         }
                 #     }
                 # }
-            }
+            },
         }
 
-        with open(config_path, 'w') as f:
+        with open(config_path, "w") as f:
             yaml.dump(default_config, f, default_flow_style=False, indent=2)
 
         return config_path

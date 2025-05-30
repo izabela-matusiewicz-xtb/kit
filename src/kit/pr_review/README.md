@@ -28,45 +28,19 @@ Kit provides **exceptional value** with transparent pricing. Based on real-world
 
 ### **Actual Cost Data (Typical 3-6 file PR)**
 
-| Mode | Cost Range | Speed | Use Case |
+| Mode | Typical Cost Range | Speed | Use Case |
 |------|------------|-------|----------|
-| **Simple** | $0.015-0.025 | 5-15 sec | Quick feedback, budget reviews |
-| **Standard** | $0.10-0.30 | 15-45 sec | Daily development - **recommended** |
-| **Agentic** | $0.56-3.07 | 1-5 min | Research/experimentation |
+| **Standard** | $0.04-0.10 | 15-45 sec | Daily development - **recommended** |
+| **Agentic** | $0.36-2.57 | 1-5 min | Research/experimentation |
 
 ### **Real-World Monthly Costs**
 
-**Small Team (20 PRs/month)**:
-- All Standard: $2.00-6.00/month  
-- Mixed approach: $5.00-15.00/month
-
-**Medium Team (100 PRs/month)**:
-- All Standard: $10.00-30.00/month
-- Mixed approach: $25.00-75.00/month  
-
-**Enterprise (500 PRs/month)**:
-- All Standard: $50.00-150.00/month
-- Mixed approach: $125.00-375.00/month
-
-**Key advantages**:
+**Key benefits**:
 - No per-seat licensing - costs scale with usage, not team size
-- No vendor lock-in - open source, you control deployment
+- Whole repo context and multiple code tools - all powered by kit
 - Complete cost transparency - see exact LLM costs with no markup
 
 ## 🎯 Review Modes Deep Dive
-
-### Simple Mode (Fast & Budget-Friendly)
-
-**How it works**: Fast file-level analysis without repository context - focuses on diff content only.
-
-**Performance Profile**:
-```
-Cost: $0.015-0.025 (typical PR)
-Speed: 5-15 seconds  
-Quality: Basic but reliable
-```
-
-**Best for**: Quick feedback, budget-conscious workflows, initial PR screening
 
 ### Standard Mode (Recommended)
 
@@ -74,13 +48,13 @@ Quality: Basic but reliable
 
 **Performance Profile**:
 ```
-Cost: $0.10-0.30 (typical PR)
+Cost: $0.02-0.05 (typical PR; can go up to 20 cents at the extreme)
 Speed: 15-45 seconds  
 Quality: Excellent balance of depth and accuracy
 ```
 
 **Strengths**:
-- Best quality-to-cost ratio
+- Excellent quality-to-cost ratio
 - Repository context and symbol analysis
 - Identifies impact on functions/classes used elsewhere
 - Fast single-pass execution
@@ -94,11 +68,11 @@ Quality: Excellent balance of depth and accuracy
 
 ### Agentic Mode (Experimental)
 
-**How it works**: Uses multi-turn analysis where the AI investigates the PR using kit's tools through iterative exploration.
+**How it works**: Uses multi-turn analysis where the AI investigates the PR using kit's tools through iterative exploration. Expensive, and with unclear quality improvenents.
 
 **Performance Profile**:
 ```
-Cost: $0.56-3.07 (typical PR)
+Cost: $0.36-2.57 (typical PR)
 Speed: 1-5 minutes
 Quality: Variable - can produce false positives
 ```
@@ -110,15 +84,6 @@ Quality: Variable - can produce false positives
 - Demonstrates that complex approaches don't always yield better results
 
 **Best for**: Research, experimentation, understanding current AI agent limitations
-
-### Mode Comparison
-
-| Aspect | Standard | Agentic |
-|--------|----------|---------|
-| **Cost** | $0.10-0.30 | $0.56-3.07 |
-| **Speed** | 15-45 sec | 1-5 min |
-| **Quality** | Excellent balance of depth and accuracy | Variable - can produce false positives |
-| **Best For** | Daily development | Research/experimentation |
 
 ## 🎯 Key Features
 
@@ -271,11 +236,10 @@ kit review-cache clear
 
 ### Cost Optimization Tips
 
-1. **Use Standard mode** for 90% of daily PRs - best value
-2. **Use Simple mode** for quick feedback or budget constraints
-3. **Use Agentic mode** sparingly for research/experimentation only
-4. **Monitor costs** with dry runs first
-5. **Enable caching** for faster subsequent reviews
+1. **Use Standard mode** for 95% of daily PRs - best value
+2. **Use Agentic mode** sparingly for research/experimentation only
+3. **Monitor costs** with dry runs first
+4. **Enable caching** for faster subsequent reviews
 
 ## 🎯 Accuracy Validation
 
@@ -303,7 +267,6 @@ Example output:
 1. **Comparative Analysis**
    ```bash
    # Compare different modes on same PR
-   kit review --dry-run --simple <pr-url>
    kit review --dry-run <pr-url>
    kit review --dry-run --agentic <pr-url>
    ```
@@ -360,10 +323,9 @@ python -m kit.pr_review.test_accuracy regression --pr-list pr_list.txt
 Output example:
 ```
 🧪 Testing PR: https://github.com/owner/repo/pull/123
-📱 SIMPLE MODE: $0.018 | 1,234 chars
 🛠️  STANDARD MODE: $0.15 | 2,856 chars  
 🤖 AGENTIC MODE: $1.25 | 4,102 chars
 
-📊 Quality Scores: Simple: 0.72 | Standard: 0.84 | Agentic: 0.71*
+📊 Quality Scores: Standard: 0.84 | Agentic: 0.71*
 *Agentic may produce false positives - use with caution
 ```

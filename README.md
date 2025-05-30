@@ -1,6 +1,5 @@
 # kit 🛠️ Code Intelligence Toolkit
 
-
 <img src="https://github.com/user-attachments/assets/7bdfa9c6-94f0-4ee0-9fdd-cbd8bd7ec060" width="360">
 
 `kit` is a production-ready toolkit for codebase mapping, symbol extraction, code search, and building LLM-powered developer tools, agents, and workflows. 
@@ -103,31 +102,28 @@ kit review https://github.com/owner/repo/pull/123
 ```
 
 **Key Features:**
-- **Production-ready**: Rivals paid services, but MIT-licensed and you just pay for tokens
-- **Cost transparency**: Shows real-time token usage and pricing
 - **Whole repo context**: Uses `kit` so has all the features of this library
-- **Fast as hell**: No queuing, shared services: just your machine (or CI) and the LLM
+- **Production-ready**: Rivals paid services, but MIT-licensed: you just pay for tokens
+- **Cost transparency**: Real-time token usage and pricing
+- **Fast**: No queuing, shared services: just your machine (or CI) + your LLM
 
 **📖 [Complete PR Reviewer Documentation](src/kit/pr_review/README.md)**
 
 ### Review Modes Comparison
 
-`kit` offers three distinct review modes to match your needs and budget:
+`kit` offers two distinct review modes:
 
 | Mode | Cost* | Speed | Quality | Use Case | Command |
 |------|-------|-------|---------|----------|---------|
-| **Simple** | ~$0.015 | Fastest | Basic | Quick feedback, budget reviews | `kit review --simple <pr-url>` |
-| **Standard** | ~$0.10-0.30 | Fast | Best | Most PRs - best value | `kit review <pr-url>` |
-| **Agentic** | ~$0.56-3.07 | Slowest | Variable** | Research/experimentation | `kit review --agentic <pr-url>` |
+| **Standard** | ~$0.01-0.05 | Fast | Best | Use this | `kit review <pr-url>` |
+| **Agentic** | ~$0.36-2.57 | Slow | Variable** | Research/experimentation | `kit review --agentic <pr-url>` |
 
-*Costs shown are estimates for a typical 3-6 file PR using Claude Sonnet 4. Actual costs depend on PR size and complexity.
-**Agentic mode can produce false positives and overconfident conclusions - use with caution.
-
-**Simple Mode** provides fast file-level analysis without repository context - reliable and cost-effective.
+*Costs shown are estimates for a typical 3-6 file PR using Claude Sonnet 4. Actual costs depend on PR size and complexity, but rarely exceeds 20 cents for even complicated PRs.
+**Agentic mode can produce false positives and overconfident conclusions - use with caution and experiment with it. It is instructive in its capabilities and state of models.
 
 **Standard Mode** leverages kit's repository intelligence for comprehensive reviews with symbol analysis and cross-codebase impact assessment. **Recommended for most use cases.**
 
-**Agentic Mode** uses multi-turn analysis where the AI investigates the PR using kit's tools. Currently serves as a research artifact demonstrating that complex agent approaches often produce worse results at higher cost than focused approaches.
+**Agentic Mode** uses multi-turn analysis where the AI investigates the PR using kit's tools. Currently serves as a research artifact demonstrating that certain agentic approaches may produce worse results at higher cost than focused approaches.
 
 ## Key Features & Capabilities
 
