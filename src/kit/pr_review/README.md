@@ -1,6 +1,6 @@
 # Kit AI-Powered PR Reviewer
 
-`kit` includes a production-ready CLI-based pull request reviewer that provides intelligent, comprehensive code reviews using Claude or GPT-4, with complete cost transparency and professional-grade analysis.
+`kit` includes a production-ready CLI-based pull request reviewer that provides intelligent, comprehensive code reviews using Anthropic or OpenAI models, with cost transparency and professional-grade analysis.
 
 ## 🚀 Quick Start
 
@@ -30,7 +30,7 @@ Kit provides **exceptional value** with transparent pricing. Based on real-world
 
 | Mode | Typical Cost Range | Speed | Use Case |
 |------|------------|-------|----------|
-| **Standard** | $0.04-0.10 | 15-45 sec | Daily development - **recommended** |
+| **Standard** | $0.05-0.20 | 15-45 sec | Daily development - **recommended** |
 | **Agentic** | $0.36-2.57 | 1-5 min | Research/experimentation |
 
 ### **Real-World Monthly Costs**
@@ -39,6 +39,40 @@ Kit provides **exceptional value** with transparent pricing. Based on real-world
 - No per-seat licensing - costs scale with usage, not team size
 - Whole repo context and multiple code tools - all powered by kit
 - Complete cost transparency - see exact LLM costs with no markup
+
+### **Complete Pricing Matrix (Real Test Results)**
+
+Tested on [cased/comet PR #2064](https://github.com/cased/comet/pull/2064) - a large 12-file PR with comprehensive analysis:
+
+| Model | Provider | Cost | Input Tokens | Output Tokens | $/Million Input | $/Million Output | Speed Tier |
+|-------|----------|------|--------------|---------------|-----------------|------------------|------------|
+| **gpt-4.1-nano** | OpenAI | **$0.0046** | 42,002 | 885 | $0.10 | $0.40 | ⚡ Ultra Budget |
+| **gpt-4o-mini** | OpenAI | **$0.0067** | 40,839 | 902 | $0.15 | $0.60 | ⚡ Budget |
+| **gpt-4.1-mini** | OpenAI | **$0.0191** | 42,026 | 1,460 | $0.40 | $1.60 | ⚡ Budget |
+| **claude-3-5-haiku-20241022** | Anthropic | **$0.0447** | 52,627 | 660 | $0.80 | $4.00 | ⚡ Budget |
+| **gpt-4.1** | OpenAI | **$0.1010** | 42,007 | 2,122 | $2.00 | $8.00 | 🚀 Good Value |
+| **gpt-4o** | OpenAI | **$0.1089** | 40,873 | 672 | $2.50 | $10.00 | 🚀 Good Value |
+| **claude-sonnet-4-20250514** | Anthropic | **$0.1759** | 52,667 | 1,195 | $3.00 | $15.00 | 🚀 **Recommended** |
+| **claude-3-5-sonnet-20241022** | Anthropic | **$0.1774** | 52,593 | 1,307 | $3.00 | $15.00 | 🚀 Fast |
+| **gpt-4-turbo** | OpenAI | **$0.4258** | 40,598 | 659 | $10.00 | $30.00 | 💰 Premium |
+| **claude-opus-4-20250514** | Anthropic | **$0.9086** | 52,597 | 1,595 | $15.00 | $75.00 | 🧠 Most Capable |
+
+**Key Insights:**
+- **197x price difference** between cheapest (GPT-4.1-nano) and most capable (Claude Opus 4)
+- **GPT-4.1-nano** offers incredible value at $0.005 per large PR - cheapest available
+- **Claude Sonnet 4** (default) balances cost and quality - comprehensive repository analysis
+- **OpenAI models** use fewer input tokens (~40k vs ~52k) but deliver comparable analysis depth
+- **GPT-4.1 series** provides excellent mid-range options between ultra-budget and premium
+
+**Projected Monthly Costs (Based on Real Data):**
+
+| Team Size | GPT-4.1-nano (Ultra Budget) | Claude Sonnet 4 (Recommended) | Claude Opus 4 (Premium) |
+|-----------|------------------------------|--------------------------------|--------------------------|
+| **Small** (20 PRs/month) | $0.09 | $3.52 | $18.17 |
+| **Medium** (100 PRs/month) | $0.46 | $17.59 | $90.86 |
+| **Enterprise** (500 PRs/month) | $2.30 | $87.95 | $454.30 |
+
+*Assumes mix of PR sizes with large PRs (12+ files) representing ~30% of reviews*
 
 ## 🎯 Review Modes Deep Dive
 
@@ -208,38 +242,311 @@ kit review-cache cleanup
 kit review-cache clear
 ```
 
-## 🎛️ Advanced Configuration
+## 🚀 CI/CD Integration
 
-### Environment Variables
+### GitHub Actions Setup
 
-| Purpose | Variable |
-|---------|----------|
-| GitHub Token | `KIT_GITHUB_TOKEN` |
-| Anthropic Key | `KIT_ANTHROPIC_TOKEN` |
-| OpenAI Key | `KIT_OPENAI_TOKEN` |
+Add automated PR reviews to your repository with GitHub Actions. Kit integrates seamlessly into CI/CD pipelines for consistent, automated code review.
 
-### Model Recommendations
+#### Basic Workflow
 
-#### Anthropic Models (Recommended)
+Create `.github/workflows/pr-review.yml`:
 
-**Latest Generation (Claude 4)**
-- `claude-opus-4-20250514` - Most capable model, best for complex analysis but expensive
-- `claude-sonnet-4-20250514` - **Recommended balance** of capability and cost
+```yaml
+name: AI PR Review
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
 
-**Previous Generation (Claude 3.x)**  
-- `claude-3-5-sonnet-20241022` - Proven reliable option, good balance
-- `claude-3-5-haiku-20241022` - Fastest responses, budget option
+jobs:
+  ai-review:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      contents: read
+    
+    steps:
+      - name: AI Code Review
+        run: |
+          pip install cased-kit
+          kit review ${{ github.event.pull_request.html_url }}
+        env:
+          KIT_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          KIT_ANTHROPIC_TOKEN: ${{ secrets.ANTHROPIC_API_KEY }}
+```
 
-#### OpenAI Models
-- `gpt-4o` - Strong reasoning capabilities
-- `gpt-4o-mini` - Cost-effective option
+#### Advanced Workflow with Error Handling
 
-### Cost Optimization Tips
+```yaml
+name: Advanced AI PR Review
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
 
-1. **Use Standard mode** for 95% of daily PRs - best value
-2. **Use Agentic mode** sparingly for research/experimentation only
-3. **Monitor costs** with dry runs first
-4. **Enable caching** for faster subsequent reviews
+jobs:
+  ai-review:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      contents: read
+    
+    steps:
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          
+      - name: Install Kit
+        run: |
+          pip install --upgrade pip
+          pip install cased-kit
+          
+      - name: Dry Run Review (for testing)
+        if: github.event.pull_request.draft
+        run: |
+          echo "🔍 Draft PR - running dry run only"
+          kit review --dry-run ${{ github.event.pull_request.html_url }}
+        env:
+          KIT_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          KIT_ANTHROPIC_TOKEN: ${{ secrets.ANTHROPIC_API_KEY }}
+          
+      - name: Full AI Review
+        if: "!github.event.pull_request.draft"
+        run: |
+          echo "🤖 Running AI review for ready PR"
+          kit review ${{ github.event.pull_request.html_url }}
+        env:
+          KIT_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          KIT_ANTHROPIC_TOKEN: ${{ secrets.ANTHROPIC_API_KEY }}
+          
+      - name: Review Failed
+        if: failure()
+        run: |
+          echo "❌ AI review failed - check logs for details"
+          echo "This might be due to:"
+          echo "- Missing API tokens"
+          echo "- Rate limiting"
+          echo "- Large PR size"
+```
+
+#### Budget-Conscious Workflow
+
+```yaml
+name: Budget AI PR Review
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  ai-review:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      contents: read
+    
+    steps:
+      - name: Budget AI Review (GPT-4.1-nano)
+        run: |
+          pip install cased-kit
+          
+          # Create budget config
+          cat > ~/.kit/review-config.yaml << EOF
+          github:
+            token: env_github_token
+          llm:
+            provider: openai
+            model: gpt-4.1-nano  # Ultra budget: ~$0.005 per PR
+            api_key: env_openai_token
+          review:
+            post_as_comment: true
+          EOF
+          
+          kit review ${{ github.event.pull_request.html_url }}
+        env:
+          KIT_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          KIT_OPENAI_TOKEN: ${{ secrets.OPENAI_API_KEY }}
+```
+
+### Token Setup for CI/CD
+
+#### Required Secrets
+
+Add these secrets to your repository settings (`Settings` → `Secrets and variables` → `Actions`):
+
+| Secret Name | Description | Required |
+|-------------|-------------|----------|
+| `ANTHROPIC_API_KEY` | Anthropic Claude API key (`sk-ant-...`) | For Claude models |
+| `OPENAI_API_KEY` | OpenAI API key (`sk-...`) | For GPT models |
+
+#### GitHub Token
+
+- **GitHub token** is automatically available as `${{ secrets.GITHUB_TOKEN }}`
+- Has write permissions to pull requests when `permissions` block is set
+- No additional setup required
+
+#### Security Best Practices
+
+```yaml
+# ✅ Good: Use organization/repository secrets
+env:
+  KIT_ANTHROPIC_TOKEN: ${{ secrets.ANTHROPIC_API_KEY }}
+
+# ❌ Bad: Never hardcode tokens
+env:
+  KIT_ANTHROPIC_TOKEN: "sk-ant-hardcoded-key"
+
+# ✅ Good: Limit permissions
+permissions:
+  pull-requests: write  # Only what's needed
+  contents: read
+
+# ❌ Bad: Excessive permissions
+permissions:
+  contents: write       # Too broad
+```
+
+### Conditional Review Logic
+
+```yaml
+# Only review non-draft PRs
+- name: AI Review
+  if: "!github.event.pull_request.draft"
+  
+# Only review PRs with specific labels
+- name: AI Review
+  if: contains(github.event.pull_request.labels.*.name, 'needs-review')
+  
+# Skip bot PRs
+- name: AI Review
+  if: "!contains(github.event.pull_request.user.login, 'bot')"
+  
+# Review only specific file types
+- name: Check Changed Files
+  id: changes
+  uses: dorny/paths-filter@v2
+  with:
+    filters: |
+      code:
+        - '**/*.py'
+        - '**/*.js'
+        - '**/*.ts'
+        
+- name: AI Review
+  if: steps.changes.outputs.code == 'true'
+```
+
+### Cost Management in CI
+
+#### Set Review Budgets
+
+```yaml
+- name: Cost-Controlled Review
+  run: |
+    # Use budget model for large PRs
+    CHANGED_FILES=$(gh pr view ${{ github.event.pull_request.number }} --json files --jq '.files | length')
+    
+    if [ $CHANGED_FILES -gt 10 ]; then
+      echo "Large PR detected ($CHANGED_FILES files) - using budget model"
+      export MODEL="gpt-4.1-nano"  # ~$0.005 per review
+    else
+      echo "Normal PR size - using recommended model"
+      export MODEL="claude-sonnet-4-20250514"  # ~$0.18 per review
+    fi
+    
+    kit review ${{ github.event.pull_request.html_url }}
+```
+
+#### Monthly Budget Tracking
+
+```yaml
+- name: Budget Tracking
+  run: |
+    echo "💰 Expected monthly costs for this repository:"
+    echo "- Budget model (GPT-4.1-nano): ~$2.30/month (500 PRs)"
+    echo "- Recommended (Claude Sonnet 4): ~$87.95/month (500 PRs)"
+    echo "- Premium (Claude Opus 4): ~$454.30/month (500 PRs)"
+    
+    # You can add actual usage tracking here
+    # e.g., send metrics to your monitoring system
+```
+
+### Troubleshooting CI Issues
+
+#### Common Problems
+
+```yaml
+- name: Debug Review Issues
+  if: failure()
+  run: |
+    echo "🔍 Debugging AI review failure..."
+    
+    # Check token availability
+    if [ -z "$KIT_GITHUB_TOKEN" ]; then
+      echo "❌ Missing GitHub token"
+    else
+      echo "✅ GitHub token available"
+    fi
+    
+    if [ -z "$KIT_ANTHROPIC_TOKEN" ]; then
+      echo "❌ Missing Anthropic token"
+    else
+      echo "✅ Anthropic token available"
+    fi
+    
+    # Check PR accessibility
+    echo "📋 PR Details:"
+    echo "- Number: ${{ github.event.pull_request.number }}"
+    echo "- URL: ${{ github.event.pull_request.html_url }}"
+    echo "- Files changed: $(gh pr view ${{ github.event.pull_request.number }} --json files --jq '.files | length')"
+```
+
+#### Rate Limiting Handling
+
+```yaml
+- name: AI Review with Retry
+  uses: nick-invision/retry@v2
+  with:
+    timeout_minutes: 10
+    max_attempts: 3
+    retry_on: error
+    command: |
+      kit review ${{ github.event.pull_request.html_url }}
+  env:
+    KIT_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    KIT_ANTHROPIC_TOKEN: ${{ secrets.ANTHROPIC_API_KEY }}
+```
+
+### Enterprise Considerations
+
+#### Organization-Level Configuration
+
+```yaml
+# Use organization secrets for consistent configuration
+env:
+  KIT_ANTHROPIC_TOKEN: ${{ secrets.ORG_ANTHROPIC_API_KEY }}
+  
+# Inherit from organization config file
+- name: Download Org Config
+  run: |
+    curl -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+         -o ~/.kit/review-config.yaml \
+         https://raw.githubusercontent.com/your-org/kit-config/main/review-config.yaml
+```
+
+#### Audit and Compliance
+
+```yaml
+- name: Review Audit Log
+  run: |
+    echo "📊 Review completed for PR #${{ github.event.pull_request.number }}"
+    echo "- Repository: ${{ github.repository }}"
+    echo "- Author: ${{ github.event.pull_request.user.login }}"
+    echo "- Timestamp: $(date -u)"
+    echo "- Model: claude-sonnet-4-20250514"
+    
+    # Send to your audit system
+    # curl -X POST your-audit-endpoint ...
+```
 
 ## 🎯 Accuracy Validation
 
@@ -286,17 +593,6 @@ Example output:
    - Compare Claude vs GPT-4 outputs
    - Use multiple team members for validation
 
-### Quality Thresholds
-
-Kit automatically warns when quality is low:
-
-- **Score < 0.6**: Warning displayed to user
-- **No specific issues**: Suggests using standard mode
-- **Broken links**: Reports invalid file references
-- **Missing coverage**: Flags unaddressed major changes
-
-### Accuracy Testing Tools
-
 Kit includes tools for systematic accuracy validation:
 
 #### Cross-Mode Testing
@@ -323,9 +619,19 @@ python -m kit.pr_review.test_accuracy regression --pr-list pr_list.txt
 Output example:
 ```
 🧪 Testing PR: https://github.com/owner/repo/pull/123
-🛠️  STANDARD MODE: $0.15 | 2,856 chars  
+🛠️ STANDARD MODE: $0.15 | 2,856 chars  
 🤖 AGENTIC MODE: $1.25 | 4,102 chars
 
 📊 Quality Scores: Standard: 0.84 | Agentic: 0.71*
 *Agentic may produce false positives - use with caution
 ```
+
+## 🎛️ Advanced Configuration
+
+### Environment Variables
+
+| Purpose | Variable |
+|---------|----------|
+| GitHub Token | `KIT_GITHUB_TOKEN` |
+| Anthropic Key | `KIT_ANTHROPIC_TOKEN` |
+| OpenAI Key | `KIT_OPENAI_TOKEN` |

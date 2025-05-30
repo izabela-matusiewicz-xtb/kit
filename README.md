@@ -89,9 +89,13 @@ The CLI supports all major repository operations with Unix-friendly output for s
 
 ### AI-Powered PR Reviews
 
-`kit` includes a CLI-based pull request reviewer that ranks with the best closed-source
-paid options for a literal fraction of the cost. You can have thousands of PRs
-reviewed at cost each month for less than $20, with no per-seat pricing, etc.
+As both of a demonstration of this library, and as a standalone product,
+`kit` includes a MIT-licensed, CLI-based pull request reviewer that
+ranks with the better closed-source paid options—but for a 
+fraction of the cost. Have thousands of PRs
+reviewed *at cost*, say $20 per month for all of them. 
+A typical high-quality `kit review` with a SOTA model costs 
+about 10 cents.
 
 ```bash
 # Configure your LLM provider (Claude or GPT-4)
@@ -103,27 +107,12 @@ kit review https://github.com/owner/repo/pull/123
 
 **Key Features:**
 - **Whole repo context**: Uses `kit` so has all the features of this library
-- **Production-ready**: Rivals paid services, but MIT-licensed: you just pay for tokens
+- **Production-ready**: Rivals paid services, but MIT-licensed; just pay for tokens
 - **Cost transparency**: Real-time token usage and pricing
-- **Fast**: No queuing, shared services: just your machine (or CI) + your LLM
+- **Fast**: No queuing, shared services: just your code and the LLM
+- **Works from wherever**: Trigger reviews with the CLI, or run it via CI
 
 **📖 [Complete PR Reviewer Documentation](src/kit/pr_review/README.md)**
-
-### Review Modes Comparison
-
-`kit` offers two distinct review modes:
-
-| Mode | Cost* | Speed | Quality | Use Case | Command |
-|------|-------|-------|---------|----------|---------|
-| **Standard** | ~$0.01-0.05 | Fast | Best | Use this | `kit review <pr-url>` |
-| **Agentic** | ~$0.36-2.57 | Slow | Variable** | Research/experimentation | `kit review --agentic <pr-url>` |
-
-*Costs shown are estimates for a typical 3-6 file PR using Claude Sonnet 4. Actual costs depend on PR size and complexity, but rarely exceeds 20 cents for even complicated PRs.
-**Agentic mode can produce false positives and overconfident conclusions - use with caution and experiment with it. It is instructive in its capabilities and state of models.
-
-**Standard Mode** leverages kit's repository intelligence for comprehensive reviews with symbol analysis and cross-codebase impact assessment. **Recommended for most use cases.**
-
-**Agentic Mode** uses multi-turn analysis where the AI investigates the PR using kit's tools. Currently serves as a research artifact demonstrating that certain agentic approaches may produce worse results at higher cost than focused approaches.
 
 ## Key Features & Capabilities
 
