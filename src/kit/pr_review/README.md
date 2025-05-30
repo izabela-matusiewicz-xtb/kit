@@ -30,23 +30,23 @@ Kit provides **exceptional value** with transparent pricing. Based on real-world
 
 | Mode | Cost Range | Speed | Use Case |
 |------|------------|-------|----------|
-| **Standard** | $0.025-0.045 | 15-30 sec | Daily development - best value |
-| **Agentic Budget** (8 turns) | $0.20-0.30 | 1-2 min | Complex PRs, budget-conscious |
-| **Agentic Thorough** (15+ turns) | $0.35-0.50 | 2-4 min | Critical PRs, maximum depth |
+| **Simple** | $0.015-0.025 | 5-15 sec | Quick feedback, budget reviews |
+| **Standard** | $0.10-0.30 | 15-45 sec | Daily development - **recommended** |
+| **Agentic** | $0.56-3.07 | 1-5 min | Research/experimentation |
 
 ### **Real-World Monthly Costs**
 
 **Small Team (20 PRs/month)**:
-- All Standard: $0.50-1.00/month  
-- Mixed approach: $2.50-4.00/month
+- All Standard: $2.00-6.00/month  
+- Mixed approach: $5.00-15.00/month
 
 **Medium Team (100 PRs/month)**:
-- All Standard: $2.50-4.50/month
-- Mixed approach: $8.00-12.00/month  
+- All Standard: $10.00-30.00/month
+- Mixed approach: $25.00-75.00/month  
 
 **Enterprise (500 PRs/month)**:
-- All Standard: $12.50-22.50/month
-- Mixed approach: $40.00-60.00/month
+- All Standard: $50.00-150.00/month
+- Mixed approach: $125.00-375.00/month
 
 **Key advantages**:
 - No per-seat licensing - costs scale with usage, not team size
@@ -55,19 +55,32 @@ Kit provides **exceptional value** with transparent pricing. Based on real-world
 
 ## 🎯 Review Modes Deep Dive
 
+### Simple Mode (Fast & Budget-Friendly)
+
+**How it works**: Fast file-level analysis without repository context - focuses on diff content only.
+
+**Performance Profile**:
+```
+Cost: $0.015-0.025 (typical PR)
+Speed: 5-15 seconds  
+Quality: Basic but reliable
+```
+
+**Best for**: Quick feedback, budget-conscious workflows, initial PR screening
+
 ### Standard Mode (Recommended)
 
 **How it works**: Leverages kit's repository intelligence for comprehensive reviews with symbol analysis and cross-codebase impact assessment.
 
 **Performance Profile**:
 ```
-Cost: $0.025-0.045 (typical PR)
-Speed: 15-30 seconds  
-Quality Score: 8.5/10
+Cost: $0.10-0.30 (typical PR)
+Speed: 15-45 seconds  
+Quality: Excellent balance of depth and accuracy
 ```
 
 **Strengths**:
-- Excellent quality-to-cost ratio
+- Best quality-to-cost ratio
 - Repository context and symbol analysis
 - Identifies impact on functions/classes used elsewhere
 - Fast single-pass execution
@@ -79,54 +92,33 @@ Quality Score: 8.5/10
 - Analyzes dependency changes and their implications
 - Provides architectural guidance based on repository structure
 
-### Agentic Mode (Multi-turn Analysis)
+### Agentic Mode (Experimental)
 
-**How it works**: Uses multi-turn analysis where the AI strategically investigates the PR using kit's tools, building deep understanding through iterative exploration.
+**How it works**: Uses multi-turn analysis where the AI investigates the PR using kit's tools through iterative exploration.
 
-**Performance Profiles**:
-
-#### Budget Configuration (8 turns)
+**Performance Profile**:
 ```
-Cost: $0.20-0.30 (typical PR)
-Speed: 45-90 seconds
-Quality Score: 8.8/10
+Cost: $0.56-3.07 (typical PR)
+Speed: 1-5 minutes
+Quality: Variable - can produce false positives
 ```
 
-#### Thorough Configuration (15 turns)  
-```
-Cost: $0.35-0.50 (typical PR)
-Speed: 2-4 minutes
-Quality Score: 9.2/10
-```
+**Important Notes**:
+- **Experimental feature** - currently serves as research artifact
+- Can produce overconfident conclusions about non-existent issues
+- Significantly more expensive than other modes
+- Demonstrates that complex approaches don't always yield better results
 
-**Unique capabilities**:
-- Investigative approach like a human reviewer
-- Deep context building across multiple files
-- Adaptive analysis focusing on important areas
-- Strategic tool usage leveraging all kit capabilities
-
-**Example investigation pattern**:
-1. Get repository structure overview
-2. Analyze main implementation changes
-3. Search for related patterns and dependencies
-4. Examine test coverage
-5. Check for cross-file impacts
-6. Finalize comprehensive review
-
-**Best for**:
-- Complex architectural changes
-- Security-critical modifications  
-- Large PRs with interconnected files
-- Critical production systems
+**Best for**: Research, experimentation, understanding current AI agent limitations
 
 ### Mode Comparison
 
-| Aspect | Standard | Agentic Budget | Agentic Thorough |
-|--------|----------|----------------|------------------|
-| **Cost** | $0.025-0.045 | $0.20-0.30 | $0.35-0.50 |
-| **Speed** | 15-30 sec | 1-2 min | 2-4 min |
-| **Quality** | 8.5/10 | 8.8/10 | 9.2/10 |
-| **Best For** | Daily workflow | Complex PRs | Critical changes |
+| Aspect | Standard | Agentic |
+|--------|----------|---------|
+| **Cost** | $0.10-0.30 | $0.56-3.07 |
+| **Speed** | 15-45 sec | 1-5 min |
+| **Quality** | Excellent balance of depth and accuracy | Variable - can produce false positives |
+| **Best For** | Daily development | Research/experimentation |
 
 ## 🎯 Key Features
 
@@ -235,11 +227,8 @@ kit review https://github.com/owner/repo/pull/123
 # Dry run (no posting)
 kit review --dry-run https://github.com/owner/repo/pull/123
 
-# Agentic budget mode (8 turns)
+# Agentic mode (experimental)
 kit review --agentic --agentic-turns 8 https://github.com/owner/repo/pull/123
-
-# Agentic thorough mode (15 turns)
-kit review --agentic --agentic-turns 15 https://github.com/owner/repo/pull/123
 ```
 
 ### Cache Management
@@ -269,11 +258,10 @@ kit review-cache clear
 #### Anthropic Models (Recommended)
 
 **Latest Generation (Claude 4)**
-- `claude-opus-4-20250514` - **Most capable model**, world's best coding model, superior for complex analysis
-- `claude-sonnet-4-20250514` - **Optimal balance**, high performance with excellent reasoning
+- `claude-opus-4-20250514` - Most capable model, best for complex analysis but expensive
+- `claude-sonnet-4-20250514` - **Recommended balance** of capability and cost
 
 **Previous Generation (Claude 3.x)**  
-- `claude-3-7-sonnet-20250219` - Extended thinking capabilities, solid performance
 - `claude-3-5-sonnet-20241022` - Proven reliable option, good balance
 - `claude-3-5-haiku-20241022` - Fastest responses, budget option
 
@@ -283,15 +271,15 @@ kit review-cache clear
 
 ### Cost Optimization Tips
 
-1. **Use Standard mode** for 80% of daily PRs
-2. **Agentic Budget mode** for complex features  
-3. **Agentic Thorough mode** for critical/security changes
+1. **Use Standard mode** for 90% of daily PRs - best value
+2. **Use Simple mode** for quick feedback or budget constraints
+3. **Use Agentic mode** sparingly for research/experimentation only
 4. **Monitor costs** with dry runs first
 5. **Enable caching** for faster subsequent reviews
 
 ## 🎯 Accuracy Validation
 
-Kit provides several approaches to validate review accuracy without relying on LLM self-assessment:
+Kit provides several approaches to validate review accuracy:
 
 ### Built-in Quality Metrics
 
@@ -306,7 +294,7 @@ Every review includes objective quality scoring:
 
 Example output:
 ```
-📊 Review Quality Score: 0.85/1.0
+📊 Review Quality Score: 0.75/1.0
 📈 Metrics: {'file_references': 3, 'specific_issues': 5, 'github_links': 4}
 ```
 
@@ -317,7 +305,7 @@ Example output:
    # Compare different modes on same PR
    kit review --dry-run --simple <pr-url>
    kit review --dry-run <pr-url>
-   kit review --dry-run --agentic --agentic-turns 8 <pr-url>
+   kit review --dry-run --agentic <pr-url>
    ```
 
 2. **Historical Tracking**
@@ -326,7 +314,7 @@ Example output:
    - Compare across different PR types
 
 3. **Spot Checking**
-   - Manually validate 5-10% of reviews
+   - Manually validate 10-20% of reviews
    - Focus on high-impact or low-scoring reviews
    - Document common failure patterns
 
@@ -372,9 +360,10 @@ python -m kit.pr_review.test_accuracy regression --pr-list pr_list.txt
 Output example:
 ```
 🧪 Testing PR: https://github.com/owner/repo/pull/123
-📱 SIMPLE MODE: $0.025 | 1,234 chars
-🛠️  STANDARD MODE: $0.045 | 2,856 chars  
-🤖 AGENTIC MODE: $0.28 | 4,102 chars
+📱 SIMPLE MODE: $0.018 | 1,234 chars
+🛠️  STANDARD MODE: $0.15 | 2,856 chars  
+🤖 AGENTIC MODE: $1.25 | 4,102 chars
 
-📊 Quality Scores: Simple: 0.72 | Standard: 0.89 | Agentic: 0.94
+📊 Quality Scores: Simple: 0.72 | Standard: 0.84 | Agentic: 0.71*
+*Agentic may produce false positives - use with caution
 ```
