@@ -9,6 +9,8 @@ Use `kit` to build things like code reviewers, code generators, even IDEs, all e
 
 Work with `kit` directly from Python, or with MCP + function calling, REST, or CLI!
 
+`kit` also ships with damn fine PR reviewer for free (just pay for LLM usage), showcasing the power of this library in just a few lines of code.
+
 ## Quick Installation
 
 ### Install from PyPI
@@ -75,9 +77,54 @@ kit usages /path/to/repo "MyClass"
 
 # Export data for external tools
 kit export /path/to/repo symbols symbols.json
+
+# Initialize configuration
+kit review --init-config
+
+# Review a PR
+kit review https://github.com/owner/repo/pull/123
+kit review --dry-run https://github.com/owner/repo/pull/123
 ```
 
 The CLI supports all major repository operations with Unix-friendly output for scripting and automation. See the [CLI Documentation](https://kit.cased.com/introduction/cli) for comprehensive usage examples.
+
+### AI-Powered PR Reviews
+
+`kit` includes a CLI-based pull request reviewer that ranks with the best closed-source
+paid options for a literal fraction of the cost. You can have thousands of PRs
+reviewed at cost each month for less than $20, with no per-seat pricing, etc.
+
+```bash
+# Configure your LLM provider (Claude or GPT-4)
+kit review --init-config
+
+# Review a PR
+kit review https://github.com/owner/repo/pull/123
+```
+
+**Key Features:**
+- **Production-ready**: Rivals paid services, but MIT-licensed and you just pay for tokens
+- **Cost transparency**: Shows real-time token usage and pricing
+- **Whole repo context**: Uses `kit` so has all the features of this library
+- **Fast as hell**: No queuing, shared services: just your machine (or CI) and the LLM
+
+**📖 [Complete PR Reviewer Documentation](src/kit/pr_review/README.md)**
+
+### Review Modes Comparison
+
+`kit` offers three distinct review modes to match your needs and budget:
+
+| Mode | Cost* | Speed | Use Case | Command |
+|------|-------|-------|----------|---------|
+| **Standard** | ~$0.03 | Fast | Most PRs - best value | `kit review <pr-url>` |
+| **Agentic (Budget)** | ~$0.25 | Medium | Complex PRs, budget-conscious | `kit review --agentic --agentic-turns 8 <pr-url>` |
+| **Agentic (Thorough)** | ~$0.40 | Slower | Critical PRs, maximum depth | `kit review --agentic --agentic-turns 15 <pr-url>` |
+
+*Costs shown are estimates for a typical 3-6 file PR using Claude Sonnet 4. Actual costs depend on PR size and complexity.
+
+**Standard Mode** leverages kit's repository intelligence for fast, comprehensive reviews with symbol analysis and cross-codebase impact assessment.
+
+**Agentic Mode** uses multi-turn analysis where the AI strategically investigates the PR using kit's tools, building deep understanding through iterative exploration. Configurable turn limits let you balance thoroughness with cost.
 
 ## Key Features & Capabilities
 
@@ -114,6 +161,13 @@ The CLI supports all major repository operations with Unix-friendly output for s
     *   **Command Line Interface**: 11+ commands for shell scripting, CI/CD, and automation workflows.
     *   **REST API**: HTTP endpoints for web applications and microservices.
     *   **MCP Server**: Model Context Protocol integration for AI agents and development tools.
+
+*   **AI-Powered Code Review:**
+    *   Automated PR review with `kit review` using Claude or GPT-4 for intelligent code analysis.
+    *   Repository cloning and comprehensive file analysis for deep code understanding.
+    *   Configurable review depth (quick, standard, thorough) and customizable analysis settings.
+    *   Seamless GitHub integration with automatic comment posting and PR workflow integration.
+    *   Cost transparency with real-time LLM token usage tracking and pricing information.
 
 ## MCP Server
 

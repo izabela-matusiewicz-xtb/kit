@@ -446,6 +446,224 @@ kit serve --host 127.0.0.1 --port 9000 --no-reload
 kit serve --port 3000
 ```
 
+### PR Review Operations
+
+<Aside type="note">
+**Want to build a custom PR reviewer?** This section covers kit's production-ready PR reviewer. For a tutorial on building your own custom reviewer using kit's components, see [Build an AI PR Reviewer](/tutorials/ai_pr_reviewer).
+</Aside>
+
+#### `kit review`
+
+AI-powered GitHub pull request reviewer that provides comprehensive code analysis with full repository context. The reviewer clones repositories, analyzes symbol relationships, and generates intelligent reviews using Claude or GPT-4.
+
+```bash
+kit review <pr-url> [OPTIONS]
+```
+
+**Options:**
+- `--dry-run`: Generate review without posting to GitHub
+- `--config <file>`: Use custom configuration file
+- `--init-config`: Create default configuration file
+- `--agentic`: Use multi-turn agentic analysis (higher cost, deeper analysis)
+- `--agentic-turns <count>`: Number of analysis turns for agentic mode
+
+**Examples:**
+
+```bash
+# Review and post comment
+kit review https://github.com/owner/repo/pull/123
+
+# Dry run (generate review without posting)
+kit review --dry-run https://github.com/owner/repo/pull/123
+
+# Use agentic mode for complex PRs
+kit review --agentic --agentic-turns 15 https://github.com/owner/repo/pull/123
+
+# Initialize configuration
+kit review --init-config
+```
+
+#### Quick Setup
+
+**1. Install and configure:**
+```bash
+# Install kit
+pip install cased-kit
+
+# Set up configuration
+kit review --init-config
+
+# Set API keys
+export KIT_GITHUB_TOKEN="ghp_your_token"
+export KIT_ANTHROPIC_TOKEN="sk-ant-your_key"
+```
+
+**2. Review a PR:**
+```bash
+kit review https://github.com/owner/repo/pull/123
+```
+
+#### Configuration
+
+The reviewer uses `~/.kit/review-config.yaml` for configuration:
+
+```yaml
+github:
+  token: ghp_your_token_here
+  base_url: https://api.github.com
+
+llm:
+  provider: anthropic  # or "openai"
+  model: claude-sonnet-4-20250514
+  api_key: sk-ant-your_key_here
+  max_tokens: 4000
+  temperature: 0.1
+
+review:
+  analysis_depth: standard  # quick, standard, thorough
+  post_as_comment: true
+  clone_for_analysis: true
+  cache_repos: true
+  cache_directory: ~/.kit/repo-cache
+  cache_ttl_hours: 24
+```
+
+#### Review Modes
+
+**Standard Mode (Recommended)**
+- Fast, comprehensive analysis with repository intelligence
+- Cost: $0.025-0.045 per typical PR
+- Speed: 15-30 seconds
+- Uses kit's symbol analysis and cross-codebase impact assessment
+
+**Agentic Mode**
+- Multi-turn analysis with strategic tool usage
+- Budget config (8 turns): $0.20-0.30, exceptional depth
+- Thorough config (20 turns): $0.35-0.50, maximum analysis
+- Best for complex architectural changes
+
+#### Model Selection
+
+**Frontier Tier ($15-75/MTok)**
+- `claude-opus-4-20250514`: Latest flagship, world's best coding model, superior complex reasoning
+- `claude-sonnet-4-20250514`: High-performance with exceptional reasoning and efficiency
+
+**Premium Tier ($3-15/MTok)**
+- `claude-3-7-sonnet-20250219`: Extended thinking capabilities
+- `claude-3-5-sonnet-20241022`: Proven excellent balance
+
+**Balanced Tier ($0.80-4/MTok)**
+- `gpt-4o-mini-2024-07-18`: Excellent value model
+- `claude-3-5-haiku-20241022`: Fastest responses
+
+#### Cache Management
+
+```bash
+# Check cache status
+kit review-cache status
+
+# Clean up old repositories
+kit review-cache cleanup
+
+# Clear all cached repositories
+kit review-cache clear
+```
+
+#### Enterprise Usage
+
+**Batch Review:**
+```bash
+# Review multiple PRs
+for pr in 123 124 125; do
+  kit review https://github.com/company/repo/pull/$pr
+done
+```
+
+**CI/CD Integration:**
+```yaml
+# .github/workflows/pr-review.yml
+name: AI PR Review
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - name: AI Review
+        run: |
+          pip install cased-kit
+          kit review --dry-run ${{ github.event.pull_request.html_url }}
+        env:
+          KIT_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          KIT_ANTHROPIC_TOKEN: ${{ secrets.ANTHROPIC_API_KEY }}
+```
+
+#### Cost Analysis
+
+**Real-world costs by team size:**
+
+*Small Team (20 PRs/month):*
+- Standard mode: $0.50-1.00/month
+- Mixed usage: $1.50-2.50/month
+
+*Enterprise (500 PRs/month):*
+- Standard mode: $12.50-22.50/month  
+- Mixed usage: $40.00-60.00/month
+
+**Cost per PR by complexity:**
+- Simple (1-2 files): $0.01-0.03
+- Medium (3-5 files): $0.03-0.06
+- Complex (6+ files): $0.06-0.12
+
+#### Features
+
+**Intelligent Analysis:**
+- Repository cloning with caching for 5-10x faster repeat reviews
+- Symbol extraction and cross-codebase impact analysis
+- Security, architecture, and performance assessment
+- Multi-language support for any language kit supports
+
+**Cost Transparency:**
+- Real-time cost tracking with exact LLM usage
+- Token breakdown (input/output) for cost optimization
+- Model information and pricing details
+
+**Enterprise Features:**
+- GitHub integration with classic and fine-grained tokens
+- Multiple LLM provider support (Anthropic Claude, OpenAI GPT-4)
+- Configurable analysis depth and review modes
+- Repository caching and batch operations
+
+#### Example Output
+
+```markdown
+## 🛠️ Kit AI Code Review
+
+### Summary & Implementation
+This PR introduces a new authentication middleware that validates JWT tokens...
+
+### Code Quality Assessment
+The implementation follows clean code principles with appropriate error handling...
+
+### Cross-Codebase Impact Analysis
+- **AuthMiddleware**: Used in 15 other places across the codebase
+- **validateToken**: New function will be called by 8 existing routes
+- Breaking change risk: Low (additive changes only)
+
+### Security & Reliability
+✅ Proper JWT validation with signature verification
+⚠️ Consider adding rate limiting for failed authentication attempts
+
+### Specific Issues & Recommendations
+1. **Line 42 in auth.py**: Consider using constant-time comparison
+2. **Line 67 in middleware.py**: Add input validation for token format
+
+---
+*Generated by kit v0.3.3 with claude-sonnet-4 analysis*
+```
+
 ## Output Formats
 
 ### Human-Readable Formats

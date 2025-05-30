@@ -393,5 +393,180 @@ def git_info(
         raise typer.Exit(code=1)
 
 
+# PR Review Operations
+@app.command("review")
+def review_pr(
+    pr_url: Optional[str] = typer.Argument(None, help="GitHub PR URL (https://github.com/owner/repo/pull/123)"),
+    config: Optional[str] = typer.Option(None, "--config", "-c", help="Path to config file (default: ~/.kit/review-config.yaml)"),
+    dry_run: bool = typer.Option(False, "--dry-run", "-n", help="Don't post comment, just show what would be posted"),
+    init_config: bool = typer.Option(False, "--init-config", help="Create a default configuration file and exit"),
+    agentic: bool = typer.Option(False, "--agentic", help="Use multi-turn agentic analysis (more thorough but expensive)"),
+    agentic_turns: int = typer.Option(15, "--agentic-turns", help="Number of analysis turns for agentic mode (default: 15)"),
+):
+    """Review a GitHub PR using kit's repository intelligence and AI analysis.
+
+    MODES:
+    • Standard (~$0.04): kit review <pr-url>
+    • Agentic (~$0.25): kit review --agentic <pr-url>
+
+    EXAMPLES:
+    kit review --init-config                                   # Setup
+    kit review --dry-run https://github.com/owner/repo/pull/123   # Preview
+    kit review https://github.com/owner/repo/pull/123            # Standard
+    kit review --agentic --agentic-turns 8 <pr-url>             # Budget agentic
+    """
+    from kit.pr_review.config import ReviewConfig
+    from kit.pr_review.reviewer import PRReviewer
+
+    if init_config:
+        try:
+            # Create default config without needing ReviewConfig.from_file()
+            config_path = config or "~/.kit/review-config.yaml"
+            config_path = Path(config_path).expanduser()
+
+            # Create a temporary ReviewConfig just to use the create_default_config_file method
+            from kit.pr_review.config import GitHubConfig, LLMConfig, LLMProvider
+            temp_config = ReviewConfig(
+                github=GitHubConfig(token="temp"),
+                llm=LLMConfig(provider=LLMProvider.ANTHROPIC, model="temp", api_key="temp")
+            )
+
+            created_path = temp_config.create_default_config_file(str(config_path))
+            typer.echo(f"✅ Created default config file at: {created_path}")
+            typer.echo("\n📝 Next steps:")
+            typer.echo("1. Edit the config file to add your tokens")
+            typer.echo("2. Set KIT_GITHUB_TOKEN and KIT_ANTHROPIC_TOKEN environment variables, or")
+            typer.echo("3. Update the config file with your actual tokens")
+            typer.echo("\n💡 Then try: kit review --dry-run https://github.com/owner/repo/pull/123")
+            return
+        except Exception as e:
+            typer.secho(f"❌ Failed to create config: {e}", fg=typer.colors.RED)
+            raise typer.Exit(code=1)
+
+    if not pr_url:
+        typer.secho("❌ PR URL is required", fg=typer.colors.RED)
+        typer.echo("\n💡 Example: kit review https://github.com/owner/repo/pull/123")
+        typer.echo("💡 Or run: kit review --help")
+        raise typer.Exit(code=1)
+
+    try:
+        # Load configuration
+        review_config = ReviewConfig.from_file(config)
+
+        # Override comment posting if dry run
+        if dry_run:
+            review_config.post_as_comment = False
+            typer.echo("🔍 Dry run mode - will not post comments")
+
+        # Configure agentic settings if requested
+        if agentic:
+            review_config.agentic_max_turns = agentic_turns
+            print(f"🤖 Agentic mode configured - max turns: {agentic_turns}")
+            if agentic_turns <= 8:
+                print("💰 Expected cost: ~$0.20-0.30 (budget mode)")
+            elif agentic_turns <= 15:
+                print("💰 Expected cost: ~$0.25-0.35 (standard mode)")
+            else:
+                print("💰 Expected cost: ~$0.30-0.50+ (extended mode)")
+        else:
+            print("🛠️ Standard mode configured - repository intelligence enabled")
+
+        # Create reviewer and run review
+        if agentic:
+            from kit.pr_review.agentic_reviewer import AgenticPRReviewer
+            reviewer = AgenticPRReviewer(review_config)
+            comment = reviewer.review_pr_agentic(pr_url)
+        else:
+            reviewer = PRReviewer(review_config)
+            comment = reviewer.review_pr(pr_url)
+
+        if dry_run:
+            typer.echo("\n" + "="*60)
+            typer.echo("REVIEW COMMENT THAT WOULD BE POSTED:")
+            typer.echo("="*60)
+            typer.echo(comment)
+            typer.echo("="*60)
+        else:
+            typer.echo("✅ Review completed and comment posted!")
+
+    except ValueError as e:
+        typer.secho(f"❌ Configuration error: {e}", fg=typer.colors.RED)
+        typer.echo("\n💡 Try running: kit review --init-config")
+        raise typer.Exit(code=1)
+    except Exception as e:
+        typer.secho(f"❌ Review failed: {e}", fg=typer.colors.RED)
+        raise typer.Exit(code=1)
+
+
+# Cache Management
+@app.command("review-cache")
+def review_cache(
+    action: str = typer.Argument(..., help="Action: status, cleanup, clear"),
+    max_size: Optional[float] = typer.Option(None, "--max-size", help="Maximum cache size in GB (for cleanup)"),
+    config: Optional[str] = typer.Option(None, "--config", "-c", help="Path to config file"),
+):
+    """Manage repository cache for PR reviews.
+
+    Actions:
+    - status: Show cache size and location
+    - cleanup: Remove old cached repositories (optionally with --max-size)
+    - clear: Remove all cached repositories
+
+    Examples:
+
+    # Show cache status
+    kit review-cache status
+
+    # Clean up cache to max 2GB
+    kit review-cache cleanup --max-size 2.0
+
+    # Clear all cache
+    kit review-cache clear
+    """
+    from kit.pr_review.cache import RepoCache
+    from kit.pr_review.config import ReviewConfig
+
+    try:
+        # Load configuration
+        review_config = ReviewConfig.from_file(config)
+        cache = RepoCache(review_config)
+
+        if action == "status":
+            if cache.cache_dir.exists():
+                # Calculate cache size
+                total_size = sum(
+                    f.stat().st_size for f in cache.cache_dir.rglob('*') if f.is_file()
+                ) / (1024 ** 3)  # Convert to GB
+
+                # Count repositories
+                repo_count = 0
+                for owner_dir in cache.cache_dir.iterdir():
+                    if owner_dir.is_dir():
+                        repo_count += len([d for d in owner_dir.iterdir() if d.is_dir()])
+
+                typer.echo(f"📁 Cache location: {cache.cache_dir}")
+                typer.echo(f"📊 Cache size: {total_size:.2f} GB")
+                typer.echo(f"📦 Cached repositories: {repo_count}")
+                typer.echo(f"⏰ TTL: {review_config.cache_ttl_hours} hours")
+            else:
+                typer.echo("📭 No cache directory found")
+
+        elif action == "cleanup":
+            cache.cleanup_cache(max_size)
+            typer.echo("✅ Cache cleanup completed")
+
+        elif action == "clear":
+            cache.clear_cache()
+            typer.echo("✅ Cache cleared")
+
+        else:
+            typer.secho(f"❌ Unknown action: {action}. Use: status, cleanup, clear", fg=typer.colors.RED)
+            raise typer.Exit(code=1)
+
+    except Exception as e:
+        typer.secho(f"❌ Cache operation failed: {e}", fg=typer.colors.RED)
+        raise typer.Exit(code=1)
+
+
 if __name__ == "__main__":
     app()
