@@ -18,7 +18,7 @@ Kit includes a **production-ready AI PR reviewer** that provides professional-gr
 ## 🚀 Quick Start
 
 ```bash
-# 1. Install kit
+# 1. Install kit (lightweight - no ML dependencies needed for PR review!)
 pip install cased-kit
 
 # 2. Set up configuration
@@ -34,6 +34,10 @@ kit review https://github.com/owner/repo/pull/123
 # 5. Test without posting (dry run)
 kit review --dry-run https://github.com/owner/repo/pull/123
 ```
+
+<Aside type="tip">
+**Just want the PR reviewer?** The base `pip install cased-kit` gives you everything needed for PR reviews without heavy ML dependencies like PyTorch. If you need semantic search features later, install with `pip install cased-kit[ml]`.
+</Aside>
 
 ## 💰 Transparent Pricing
 

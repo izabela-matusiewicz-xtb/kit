@@ -13,8 +13,6 @@ dependencies = [
     "pathspec>=0.11.1",
     "pytest>=8.3.5",
     "numpy>=1.25",
-    "chromadb>=0.5.23",
-    "sentence-transformers>=2.2.0",
     "fastapi==0.110.0",     
     "uvicorn[standard]>=0.20",
     "typer>=0.9",
@@ -73,6 +71,14 @@ dev = [
 test-api = [
     "fastapi", # For TestClient
     "pytest" # Already in core, but good to list for a test group
+]
+ml = [
+    "sentence-transformers>=2.2.0",  # For VectorSearcher and DocstringIndexer
+    "chromadb>=0.5.23",  # Vector database for semantic search
+]
+all = [
+    "sentence-transformers>=2.2.0",
+    "chromadb>=0.5.23",
 ]
 
 [tool.ruff]
