@@ -15,7 +15,6 @@ Work with `kit` directly from Python, or with MCP + function calling, REST, or C
 ### Install from PyPI
 
 ```bash
-# Basic installation (includes PR reviewer, no ML dependencies)
 pip install cased-kit
 
 # With semantic search features (includes PyTorch, sentence-transformers)
