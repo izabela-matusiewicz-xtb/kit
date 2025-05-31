@@ -4,6 +4,10 @@ title: Build an AI PR Reviewer
 
 import { Aside } from '@astrojs/starlight/components';
 
+<Aside type="tip">
+**Looking for a ready-to-use PR reviewer?** Kit includes a production-ready AI PR reviewer available via `kit review`. See the [CLI documentation](/introduction/cli#pr-review-operations) for setup and usage. This tutorial shows you how to build your own custom reviewer using kit's components.
+</Aside>
+
 `kit` shines when an LLM needs to *understand a change in the context of the **entire** code-base*—exactly what a human reviewer does. 
 A good review often requires looking beyond the immediate lines changed to understand their implications, check for consistency with existing patterns, and ensure no unintended side-effects arise. This tutorial walks through a **minimal but complete** AI PR-review bot that demonstrates how `kit` provides this crucial whole-repo context.
 

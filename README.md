@@ -1,6 +1,5 @@
 # kit 🛠️ Code Intelligence Toolkit
 
-
 <img src="https://github.com/user-attachments/assets/7bdfa9c6-94f0-4ee0-9fdd-cbd8bd7ec060" width="360">
 
 `kit` is a production-ready toolkit for codebase mapping, symbol extraction, code search, and building LLM-powered developer tools, agents, and workflows. 
@@ -9,12 +8,20 @@ Use `kit` to build things like code reviewers, code generators, even IDEs, all e
 
 Work with `kit` directly from Python, or with MCP + function calling, REST, or CLI!
 
+`kit` also ships with damn fine PR reviewer for free (just pay for LLM usage), showcasing the power of this library in just a few lines of code.
+
 ## Quick Installation
 
 ### Install from PyPI
 
 ```bash
 pip install cased-kit
+
+# With semantic search features (includes PyTorch, sentence-transformers)
+pip install cased-kit[ml]
+
+# Everything (including MCP server and all features)
+pip install cased-kit[all]
 ```
 
 ### Install from Source
@@ -74,9 +81,43 @@ kit usages /path/to/repo "MyClass"
 
 # Export data for external tools
 kit export /path/to/repo symbols symbols.json
+
+# Initialize configuration
+kit review --init-config
+
+# Review a PR
+kit review https://github.com/owner/repo/pull/123
+kit review --dry-run https://github.com/owner/repo/pull/123
 ```
 
 The CLI supports all major repository operations with Unix-friendly output for scripting and automation. See the [CLI Documentation](https://kit.cased.com/introduction/cli) for comprehensive usage examples.
+
+### AI-Powered PR Reviews
+
+As both of a demonstration of this library, and as a standalone product,
+`kit` includes a MIT-licensed, CLI-based pull request reviewer that
+ranks with the better closed-source paid options—but for a 
+fraction of the cost. Have thousands of PRs
+reviewed *at cost*, say $20 per month for all of them. 
+A typical high-quality `kit review` with a SOTA model costs 
+about 10 cents.
+
+```bash
+# Configure your LLM provider (Claude or GPT-4)
+kit review --init-config
+
+# Review a PR
+kit review https://github.com/owner/repo/pull/123
+```
+
+**Key Features:**
+- **Whole repo context**: Uses `kit` so has all the features of this library
+- **Production-ready**: Rivals paid services, but MIT-licensed; just pay for tokens
+- **Cost transparency**: Real-time token usage and pricing
+- **Fast**: No queuing, shared services: just your code and the LLM
+- **Works from wherever**: Trigger reviews with the CLI, or run it via CI
+
+**📖 [Complete PR Reviewer Documentation](src/kit/pr_review/README.md)**
 
 ## Key Features & Capabilities
 
@@ -113,6 +154,13 @@ The CLI supports all major repository operations with Unix-friendly output for s
     *   **Command Line Interface**: 11+ commands for shell scripting, CI/CD, and automation workflows.
     *   **REST API**: HTTP endpoints for web applications and microservices.
     *   **MCP Server**: Model Context Protocol integration for AI agents and development tools.
+
+*   **AI-Powered Code Review:**
+    *   Automated PR review with `kit review` using Claude or GPT-4 for intelligent code analysis.
+    *   Repository cloning and comprehensive file analysis for deep code understanding.
+    *   Configurable review depth (quick, standard, thorough) and customizable analysis settings.
+    *   Seamless GitHub integration with automatic comment posting and PR workflow integration.
+    *   Cost transparency with real-time LLM token usage tracking and pricing information.
 
 ## MCP Server
 
@@ -152,4 +200,3 @@ MIT License
 - **Project Direction**: See our [Roadmap](https://kit.cased.com/development/roadmap) for future plans and focus areas.
 
 To contribute, fork the repository, make your changes, and submit a pull request.
-
