@@ -193,6 +193,7 @@ jobs:
 - **Per-Organization Context**: Store custom guidelines and coding standards
 - **Feedback Learning**: Simple database to learn from review feedback
 - **Inline Comments**: Post comments directly on specific lines
+- **Follow-up review awareness**: Take previous reviews into account for better feedback
 
 ```bash
 # Coming soon
@@ -200,6 +201,7 @@ kit profile create --name "company-standards" --file coding-guidelines.md
 kit review --profile company-standards <pr-url>
 kit feedback <review-id> --helpful --notes "Great catch!"
 ```
+
 ```bash
 # Future features
 kit review <pr-url> --consensus  # Multiple models
