@@ -42,7 +42,8 @@ Kit provides **exceptional value** with transparent pricing. Based on real-world
 
 ### **Complete Pricing Matrix (Real Test Results)**
 
-Tested on [cased/comet PR #2064](https://github.com/cased/comet/pull/2064) - a large 12-file PR with comprehensive analysis:
+Tested on a large 12-file PR with comprehensive analysis. Costs are often lower (e.g., sonnet4 on most PRs we get
+at 8 cents a review).
 
 | Model | Provider | Cost | Input Tokens | Output Tokens | $/Million Input | $/Million Output | Speed Tier |
 |-------|----------|------|--------------|---------------|-----------------|------------------|------------|
@@ -614,9 +615,7 @@ Output example:
 *Agentic may produce false positives - use with caution
 ```
 
-## 🎛️ Advanced Configuration
-
-### Environment Variables
+## Environment Variables
 
 | Purpose | Variable |
 |---------|----------|
