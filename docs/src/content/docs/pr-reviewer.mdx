@@ -188,23 +188,6 @@ jobs:
   if: contains(github.event.pull_request.labels.*.name, 'needs-review')
 ```
 
-## 🎯 Review Modes
-
-### Standard Mode (Recommended)
-- **Cost**: $0.01-0.05 per typical PR
-- **Speed**: 15-45 seconds
-- **Features**: Repository intelligence, symbol analysis, impact assessment
-
-### Agentic Mode (Experimental)  
-- **Cost**: $0.36-2.57 per typical PR
-- **Speed**: 1-5 minutes
-- **Features**: Multi-turn analysis, deeper investigation
-
-```bash
-# Use agentic mode for complex PRs
-kit review --agentic --agentic-turns 15 <pr-url>
-```
-
 ## 📈 What's Next: Roadmap
 
 #### Custom Context & Learning
