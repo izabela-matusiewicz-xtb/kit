@@ -44,7 +44,7 @@ Identifies the main change as a packaging restructure but misses deeper implicat
 **Sample Output**:
 > "This PR changes FastAPI's installation approach, moving CLI dependencies to an optional extra. The main change allows users to install either `fastapi` (minimal) or `fastapi[standard]` (full features). Error handling in `cli.py` could use more specific exceptions."
 
-**Best For**: High-volume basic reviews, quick sanity checks
+**Best For**: High-volume minor reviews, quick sanity checks
 
 ---
 
@@ -71,7 +71,7 @@ Provides good technical analysis with better context understanding than nano.
 **Sample Output**:
 > "This PR introduces a significant packaging change for FastAPI, moving from batteries-included to opt-in dependencies. Key improvements needed: better exception types in CLI error handling, expanded test coverage for both installation modes, and documentation consistency across the ecosystem."
 
-**Best For**: Regular development workflow, cost-conscious teams
+**Best For**: Highly cost-conscious teams
 
 ---
 
