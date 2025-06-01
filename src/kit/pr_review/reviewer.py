@@ -4,7 +4,7 @@ import asyncio
 import re
 import subprocess
 import tempfile
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional, Union
 
 import requests
 
@@ -30,7 +30,7 @@ class PRReviewer:
                 "User-Agent": "kit-pr-reviewer/0.1.0",
             }
         )
-        self._llm_client = None
+        self._llm_client: Optional[Any] = None  # Will be Anthropic or OpenAI client
         self.repo_cache = RepoCache(config)
         self.cost_tracker = CostTracker(config.custom_pricing)
 
@@ -82,7 +82,7 @@ class PRReviewer:
     def get_pr_diff(self, owner: str, repo: str, pr_number: int) -> str:
         """Get the full diff for the PR."""
         url = f"{self.config.github.base_url}/repos/{owner}/{repo}/pulls/{pr_number}"
-        headers = self.github_session.headers.copy()
+        headers = dict(self.github_session.headers)
         headers["Accept"] = "application/vnd.github.v3.diff"
 
         response = self.github_session.get(url, headers=headers)
@@ -121,7 +121,7 @@ class PRReviewer:
         priority_files, skipped_count = FilePrioritizer.smart_priority(files, max_files=10)
 
         # Instead of full file contents, get targeted symbol analysis for each file
-        file_analysis = {}
+        file_analysis: Dict[str, Dict[str, Any]] = {}
 
         for file_info in priority_files:
             file_path = file_info["filename"]

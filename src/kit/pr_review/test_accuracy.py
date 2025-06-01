@@ -1,7 +1,7 @@
 """Accuracy testing tool for PR reviews."""
 
 import argparse
-from typing import Any, Dict, List
+from typing import Any, Dict, List, cast
 
 from .agentic_reviewer import AgenticPRReviewer
 from .config import ReviewConfig
@@ -61,7 +61,8 @@ class AccuracyTester:
         for mode, result in results.items():
             if result.get("success"):
                 cost = result.get("cost", 0)
-                review_length = len(result.get("review", ""))
+                review = cast(str, result.get("review", ""))
+                review_length = len(review)
                 print(f"{mode.upper():>10}: ${cost:.3f} | {review_length:,} chars")
             else:
                 print(f"{mode.upper():>10}: FAILED - {result.get('error', 'Unknown error')}")
@@ -113,7 +114,7 @@ class AccuracyTester:
         print("=" * 60)
 
         results = []
-        total_cost = 0
+        total_cost = 0.0
 
         for i, pr_url in enumerate(pr_urls, 1):
             print(f"\n[{i}/{len(pr_urls)}] Testing: {pr_url}")
@@ -151,9 +152,9 @@ class AccuracyTester:
             results.append(result)
 
         # Summary
-        successful = [r for r in results if r.get("success")]
-        avg_score = sum(r["quality_score"] for r in successful) / len(successful) if successful else 0
-        avg_cost = sum(r["cost"] for r in successful) / len(successful) if successful else 0
+        successful = [r for r in results if r.get("success") is True]
+        avg_score = sum(cast(float, r["quality_score"]) for r in successful) / len(successful) if successful else 0
+        avg_cost = sum(cast(float, r["cost"]) for r in successful) / len(successful) if successful else 0
 
         print("\n📊 REGRESSION TEST SUMMARY")
         print("=" * 40)

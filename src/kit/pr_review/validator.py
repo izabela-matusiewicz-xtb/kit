@@ -2,7 +2,7 @@
 
 import re
 from dataclasses import dataclass
-from typing import Dict, List
+from typing import Dict, List, Set, Union
 
 
 @dataclass
@@ -11,7 +11,7 @@ class ValidationResult:
 
     score: float  # 0-1 quality score
     issues: List[str]  # List of quality issues found
-    metrics: Dict[str, int]  # Detailed metrics
+    metrics: Dict[str, Union[int, float]]  # Detailed metrics
 
 
 class ReviewValidator:
@@ -23,7 +23,7 @@ class ReviewValidator:
     def validate_review(self, review_content: str, pr_diff: str, changed_files: List[str]) -> ValidationResult:
         """Validate review quality using objective metrics."""
         issues = []
-        metrics = {}
+        metrics: Dict[str, Union[int, float]] = {}
 
         # 1. Reference validation - does review reference actual diff content?
         metrics["file_references"] = self._count_file_references(review_content, changed_files)
@@ -96,7 +96,7 @@ class ReviewValidator:
         line_refs = re.findall(r":(\d+)", review)
 
         # Extract line ranges from diff (simplified check)
-        diff_lines = set()
+        diff_lines: Set[int] = set()
         for line in pr_diff.split("\n"):
             if line.startswith("@@"):
                 # Parse @@ -old_start,old_count +new_start,new_count @@
@@ -245,7 +245,7 @@ class ReviewValidator:
 
         return covered / len(major_changes)
 
-    def _calculate_quality_score(self, metrics: Dict[str, int], issues: List[str]) -> float:
+    def _calculate_quality_score(self, metrics: Dict[str, Union[int, float]], issues: List[str]) -> float:
         """Calculate overall quality score."""
         score = 1.0
 

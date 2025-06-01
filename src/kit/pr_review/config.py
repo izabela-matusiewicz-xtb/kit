@@ -68,7 +68,7 @@ class ReviewConfig:
         if config_path is None:
             config_path = os.path.expanduser("~/.kit/review-config.yaml")
 
-        config_data = {}
+        config_data: Dict = {}
 
         # Try to load from file
         config_file = Path(config_path)
@@ -77,18 +77,22 @@ class ReviewConfig:
                 config_data = yaml.safe_load(f) or {}
 
         # Override with environment variables
-        github_config = GitHubConfig(
-            token=config_data.get("github", {}).get("token")
+        github_token = (
+            config_data.get("github", {}).get("token")
             or os.getenv("KIT_GITHUB_TOKEN")
-            or os.getenv("GITHUB_TOKEN"),
-            base_url=config_data.get("github", {}).get("base_url", "https://api.github.com"),
+            or os.getenv("GITHUB_TOKEN")
         )
-
-        if not github_config.token:
+        
+        if not github_token:
             raise ValueError(
                 "GitHub token required. Set KIT_GITHUB_TOKEN environment variable or "
                 "add 'github.token' to ~/.kit/review-config.yaml"
             )
+
+        github_config = GitHubConfig(
+            token=github_token,
+            base_url=config_data.get("github", {}).get("base_url", "https://api.github.com"),
+        )
 
         # LLM configuration
         llm_data = config_data.get("llm", {})
@@ -109,6 +113,12 @@ class ReviewConfig:
             api_key_env = "KIT_OPENAI_TOKEN or OPENAI_API_KEY"
             api_key = llm_data.get("api_key") or os.getenv("KIT_OPENAI_TOKEN") or os.getenv("OPENAI_API_KEY")
 
+        if not api_key:
+            raise ValueError(
+                f"LLM API key required. Set {api_key_env} environment variable or "
+                f"add 'llm.api_key' to ~/.kit/review-config.yaml"
+            )
+
         llm_config = LLMConfig(
             provider=provider,
             model=llm_data.get("model", default_model),
@@ -116,12 +126,6 @@ class ReviewConfig:
             max_tokens=llm_data.get("max_tokens", 4000),
             temperature=llm_data.get("temperature", 0.1),
         )
-
-        if not llm_config.api_key:
-            raise ValueError(
-                f"LLM API key required. Set {api_key_env} environment variable or "
-                f"add 'llm.api_key' to ~/.kit/review-config.yaml"
-            )
 
         # Review settings
         review_data = config_data.get("review", {})

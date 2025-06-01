@@ -123,6 +123,10 @@ class CostTracker:
         """Get human-readable cost summary."""
         return str(self.breakdown)
 
+    def get_total_cost(self) -> float:
+        """Get total cost in USD for the current review."""
+        return self.breakdown.llm_cost_usd
+
     def extract_anthropic_usage(self, response) -> tuple[int, int]:
         """Extract token usage from Anthropic response."""
         try:

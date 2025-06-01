@@ -4,7 +4,7 @@ import json
 import statistics
 import time
 from dataclasses import asdict, dataclass
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Union, cast
 
 from .agentic_reviewer import AgenticPRReviewer
 from .config import GitHubConfig, LLMConfig, LLMProvider, ReviewConfig
@@ -104,30 +104,29 @@ class MatrixTester:
     def run_single_test(
         self, pr_url: str, mode: str, provider: LLMProvider, model: str, display_name: str
     ) -> TestResult:
-        """Run a single test combination."""
-        print(f"🧪 Testing: {display_name} | {mode.upper()} mode")
-        print(f"   📍 Model: {model}")
-        print(f"   🔗 PR: {pr_url}")
+        """Run a single test configuration."""
+        print(f"\n🔧 Testing: {display_name} ({mode} mode)")
 
-        start_time = time.time()
+        # Create config for this model
+        config = self.create_config(provider, model)
 
         try:
-            # Create config for this combination
-            config = self.create_config(provider, model)
-            print(f"   ⚙️  Config created for {provider.value}")
+            start_time = time.time()
+            cost = 0.0
+            reviewer: Union[PRReviewer, AgenticPRReviewer]  # Explicitly type the reviewer
 
-            # Run review based on mode
             if mode == "standard":
-                print("   🛠️  Running STANDARD review...")
+                print(f"   📝 Running STANDARD review...")
                 reviewer = PRReviewer(config)
                 review = reviewer.review_pr(pr_url)
                 cost = reviewer.cost_tracker.breakdown.llm_cost_usd
             elif mode == "agentic":
                 print(f"   🤖 Running AGENTIC review (max {self.base_config.agentic_max_turns} turns)...")
-                reviewer = AgenticPRReviewer(config)
-                reviewer.max_turns = 8  # Budget setting for testing
-                review = reviewer.review_pr_agentic(pr_url)
-                cost = reviewer.cost_tracker.breakdown.llm_cost_usd
+                agentic_reviewer = AgenticPRReviewer(config)
+                agentic_reviewer.max_turns = 8  # Budget setting for testing
+                review = agentic_reviewer.review_pr_agentic(pr_url)
+                cost = agentic_reviewer.cost_tracker.breakdown.llm_cost_usd
+                reviewer = agentic_reviewer  # For later use
             else:
                 raise ValueError(f"Unknown mode: {mode}")
 
@@ -335,11 +334,11 @@ class MatrixTester:
             # Show any Opus scores if available
             opus_tests = [r for r in self.test_results if r.opus_score is not None]
             if opus_tests:
-                best_opus = max(opus_tests, key=lambda x: x.opus_score)
+                best_opus = max(opus_tests, key=lambda x: x.opus_score if x.opus_score is not None else 0)
                 print(
                     f"🧠 Best Opus score: {best_opus.opus_score}/10 - {best_opus.provider} {best_opus.model} ({best_opus.mode})"
                 )
-                avg_opus = sum(r.opus_score for r in opus_tests) / len(opus_tests)
+                avg_opus = sum(r.opus_score for r in opus_tests if r.opus_score is not None) / len(opus_tests)
                 print(f"📊 Average Opus score: {avg_opus:.1f}/10 across {len(opus_tests)} reviews")
 
         return suite
@@ -508,8 +507,8 @@ Format as JSON:
         avg_structural_score = sum(r.structural_score for r in successful) / len(successful)
 
         # Cost analysis by mode and model
-        cost_by_mode = {}
-        cost_by_model = {}
+        cost_by_mode: Dict[str, List[float]] = {}
+        cost_by_model: Dict[str, List[float]] = {}
 
         for result in successful:
             # By mode
@@ -550,7 +549,7 @@ Format as JSON:
 
         # Structural scores
         if any(r.structural_score > 0 for r in successful):
-            structural_scores = {}
+            structural_scores: Dict[str, List[float]] = {}
             for result in successful:
                 key = f"{result.provider}:{result.model}:{result.mode}"
                 if key not in structural_scores:
@@ -562,12 +561,13 @@ Format as JSON:
         # Opus scores
         opus_results = [r for r in successful if r.opus_score is not None]
         if opus_results:
-            opus_scores = {}
+            opus_scores: Dict[str, List[float]] = {}
             for result in opus_results:
                 key = f"{result.provider}:{result.model}:{result.mode}"
                 if key not in opus_scores:
                     opus_scores[key] = []
-                opus_scores[key].append(result.opus_score)
+                # Cast to float since we've already filtered for non-None values
+                opus_scores[key].append(cast(float, result.opus_score))
 
             quality_rankings["opus"] = {key: statistics.mean(scores) for key, scores in opus_scores.items()}
 

@@ -3,7 +3,7 @@
 import asyncio
 import json
 import re
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional, Sequence, cast
 
 import requests
 
@@ -26,11 +26,11 @@ class AgenticPRReviewer:
                 "User-Agent": "kit-agentic-reviewer/0.1.0",
             }
         )
-        self._llm_client = None
+        self._llm_client: Optional[Any] = None
         self.repo_cache = RepoCache(config)
         self.cost_tracker = CostTracker(config.custom_pricing)
-        self.conversation_history = []
-        self.analysis_state = {}
+        self.conversation_history: List[Dict[str, str]] = []
+        self.analysis_state: Dict[str, Any] = {}
 
         # Customizable turn limit - default to 15 for reasonble completion rate
         self.max_turns = getattr(config, "agentic_max_turns", 15)
@@ -64,7 +64,7 @@ class AgenticPRReviewer:
     def get_pr_diff(self, owner: str, repo: str, pr_number: int) -> str:
         """Get the full diff for the PR."""
         url = f"{self.config.github.base_url}/repos/{owner}/{repo}/pulls/{pr_number}"
-        headers = self.github_session.headers.copy()
+        headers = dict(self.github_session.headers)
         headers["Accept"] = "application/vnd.github.v3.diff"
 
         response = self.github_session.get(url, headers=headers)
@@ -561,7 +561,7 @@ class AgenticPRReviewer:
             self._llm_client = anthropic.Anthropic(api_key=self.config.llm.api_key)
 
         tools = self._get_available_tools()
-        messages = [{"role": "user", "content": initial_prompt}]
+        messages: List[Dict[str, Any]] = [{"role": "user", "content": initial_prompt}]
 
         max_turns = self.max_turns  # Use the customizable turn limit
         turn = 0
@@ -613,14 +613,14 @@ class AgenticPRReviewer:
                 )
 
                 # Collect all tool calls and text content
-                assistant_message = {"role": "assistant", "content": []}
+                assistant_message: Dict[str, Any] = {"role": "assistant", "content": []}
                 tool_calls = []
                 has_text_content = False
 
                 # Process all content blocks
                 for content_block in response.content:
                     if content_block.type == "text":
-                        assistant_message["content"].append({"type": "text", "text": content_block.text})
+                        cast(List[Any], assistant_message["content"]).append({"type": "text", "text": content_block.text})
                         print(f"💭 Agent thinking: {content_block.text[:200]}...")
                         has_text_content = True
 
@@ -632,7 +632,7 @@ class AgenticPRReviewer:
                         print(f"🔧 Agent using tool: {tool_name} with {tool_input}")
 
                         # Add tool use to assistant message
-                        assistant_message["content"].append(
+                        cast(List[Any], assistant_message["content"]).append(
                             {"type": "tool_use", "id": tool_use_id, "name": tool_name, "input": tool_input}
                         )
 
@@ -657,10 +657,11 @@ class AgenticPRReviewer:
                     finalize_called = False
 
                     for (tool_name, tool_input, tool_use_id), result in zip(tool_calls, tool_results):
+                        result_text: str
                         if isinstance(result, Exception):
                             result_text = f"Error executing {tool_name}: {result!s}"
                         else:
-                            result_text = result
+                            result_text = str(result)
 
                         tool_result_contents.append(
                             {"type": "tool_result", "tool_use_id": tool_use_id, "content": result_text}
@@ -711,7 +712,7 @@ class AgenticPRReviewer:
             }
             for tool in self._get_available_tools()
         ]
-        messages = [{"role": "user", "content": initial_prompt}]
+        messages: List[Dict[str, Any]] = [{"role": "user", "content": initial_prompt}]
 
         max_turns = self.max_turns
         turn = 0
@@ -790,10 +791,11 @@ class AgenticPRReviewer:
                     finalize_called = False
 
                     for (tool_call_id, tool_name, tool_input), result in zip(tool_call_info, tool_results):
+                        result_text: str
                         if isinstance(result, Exception):
                             result_text = f"Error executing {tool_name}: {result!s}"
                         else:
-                            result_text = result
+                            result_text = str(result)
 
                         messages.append({"role": "tool", "tool_call_id": tool_call_id, "content": result_text})
 

@@ -428,7 +428,7 @@ def review_pr(
         try:
             # Create default config without needing ReviewConfig.from_file()
             config_path = config or "~/.kit/review-config.yaml"
-            config_path = Path(config_path).expanduser()
+            config_path = str(Path(config_path).expanduser())
 
             # Create a temporary ReviewConfig just to use the create_default_config_file method
             from kit.pr_review.config import GitHubConfig, LLMConfig, LLMProvider
@@ -438,7 +438,7 @@ def review_pr(
                 llm=LLMConfig(provider=LLMProvider.ANTHROPIC, model="temp", api_key="temp"),
             )
 
-            created_path = temp_config.create_default_config_file(str(config_path))
+            created_path = temp_config.create_default_config_file(config_path)
             typer.echo(f"✅ Created default config file at: {created_path}")
             typer.echo("\n📝 Next steps:")
             typer.echo("1. Edit the config file to add your tokens")
@@ -482,11 +482,11 @@ def review_pr(
         if agentic:
             from kit.pr_review.agentic_reviewer import AgenticPRReviewer
 
-            reviewer = AgenticPRReviewer(review_config)
-            comment = reviewer.review_pr_agentic(pr_url)
+            agentic_reviewer = AgenticPRReviewer(review_config)
+            comment = agentic_reviewer.review_pr_agentic(pr_url)
         else:
-            reviewer = PRReviewer(review_config)
-            comment = reviewer.review_pr(pr_url)
+            standard_reviewer = PRReviewer(review_config)
+            comment = standard_reviewer.review_pr(pr_url)
 
         if dry_run:
             typer.echo("\n" + "=" * 60)
