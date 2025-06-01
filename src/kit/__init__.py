@@ -5,7 +5,7 @@ A modular toolkit for LLM-powered codebase understanding.
 from pkg_resources import DistributionNotFound, get_distribution
 
 __author__ = "cased"
-__version__ = "0.5.1"
+__version__ = "0.5.2"
 
 from .code_searcher import CodeSearcher
 from .context_extractor import ContextExtractor
