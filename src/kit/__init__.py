@@ -2,8 +2,6 @@
 A modular toolkit for LLM-powered codebase understanding.
 """
 
-from pkg_resources import DistributionNotFound, get_distribution
-
 __author__ = "cased"
 __version__ = "0.5.2"
 
