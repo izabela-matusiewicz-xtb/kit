@@ -331,7 +331,7 @@ def test_github_session_setup():
     headers = reviewer.github_session.headers
     assert headers["Authorization"] == "token test_token"
     assert headers["Accept"] == "application/vnd.github.v3+json"
-    assert "kit-pr-reviewer" in headers["User-Agent"]
+    assert "kit-review" in headers["User-Agent"]
 
 
 def test_cost_breakdown_str():
