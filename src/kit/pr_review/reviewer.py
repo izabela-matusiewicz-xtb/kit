@@ -28,7 +28,7 @@ class PRReviewer:
             {
                 "Authorization": f"token {config.github.token}",
                 "Accept": "application/vnd.github.v3+json",
-                "User-Agent": "kit-review/0.6.0",
+                "User-Agent": "kit-review/0.6.1",
             }
         )
         self._llm_client: Optional[Any] = None  # Will be Anthropic or OpenAI client
