@@ -953,7 +953,8 @@ Keep it focused and valuable. Begin your analysis.
             # Parse PR input
             owner, repo, pr_number = self.parse_pr_url(pr_input)
             print(
-                f"🤖 Reviewing PR #{pr_number} in {owner}/{repo} [AGENTIC MODE - {self.max_turns} turns - {self.config.llm.model}]"
+                f"🤖 Reviewing PR #{pr_number} in {owner}/{repo} "
+                f"[AGENTIC MODE - {self.max_turns} turns - {self.config.llm.model} | max_tokens={self.config.llm.max_tokens}]"
             )
 
             # Get PR details

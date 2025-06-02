@@ -451,7 +451,9 @@ def review_pr(
             typer.echo(f"✅ Created default config file at: {created_path}")
             typer.echo("\n📝 Next steps:")
             typer.echo("1. Edit the config file to add your tokens")
-            typer.echo("2. Set KIT_GITHUB_TOKEN and KIT_ANTHROPIC_TOKEN environment variables, or")
+            typer.echo(
+                "2. Set KIT_GITHUB_TOKEN and either KIT_ANTHROPIC_TOKEN or KIT_OPENAI_TOKEN environment variables, or"
+            )
             typer.echo("3. Update the config file with your actual tokens")
             typer.echo("\n💡 Then try: kit review --dry-run https://github.com/owner/repo/pull/123")
             return

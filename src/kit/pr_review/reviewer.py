@@ -28,7 +28,7 @@ class PRReviewer:
             {
                 "Authorization": f"token {config.github.token}",
                 "Accept": "application/vnd.github.v3+json",
-                "User-Agent": "kit-pr-reviewer/0.1.0",
+                "User-Agent": "kit-review/0.6.0",
             }
         )
         self._llm_client: Optional[Any] = None  # Will be Anthropic or OpenAI client
@@ -335,7 +335,10 @@ class PRReviewer:
         try:
             # Parse PR input
             owner, repo, pr_number = self.parse_pr_url(pr_input)
-            print(f"🛠️ Reviewing PR #{pr_number} in {owner}/{repo} [STANDARD MODE - {self.config.llm.model}]")
+            print(
+                f"🛠️ Reviewing PR #{pr_number} in {owner}/{repo} "
+                f"[STANDARD MODE - {self.config.llm.model} | max_tokens={self.config.llm.max_tokens}]"
+            )
 
             # Get PR details
             pr_details = self.get_pr_details(owner, repo, pr_number)
