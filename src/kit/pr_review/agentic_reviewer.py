@@ -10,7 +10,7 @@ import requests
 from .cache import RepoCache
 from .config import LLMProvider, ReviewConfig
 from .cost_tracker import CostTracker
-from .diff_parser import DiffParser
+from .diff_parser import DiffParser, FileDiff
 from .file_prioritizer import FilePrioritizer
 
 
@@ -36,6 +36,12 @@ class AgenticPRReviewer:
         # Customizable turn limit - default to 15 for reasonble completion rate
         self.max_turns = getattr(config, "agentic_max_turns", 15)
         self.finalize_threshold = getattr(config, "agentic_finalize_threshold", 10)
+
+        # Diff caching placeholders
+        self._cached_diff_key: Optional[tuple[str, str, int]] = None
+        self._cached_diff_text: Optional[str] = None
+        self._cached_parsed_diff: Optional[Dict[str, FileDiff]] = None
+        self._cached_parsed_key: Optional[tuple[str, str, int]] = None
 
     def parse_pr_url(self, pr_input: str) -> tuple[str, str, int]:
         """Parse PR URL to extract owner, repo, and PR number."""
@@ -64,6 +70,12 @@ class AgenticPRReviewer:
 
     def get_pr_diff(self, owner: str, repo: str, pr_number: int) -> str:
         """Get the full diff for the PR."""
+        key = (owner, repo, pr_number)
+
+        if getattr(self, "_cached_diff_key", None) == key and hasattr(self, "_cached_diff_text"):
+            assert self._cached_diff_text is not None
+            return self._cached_diff_text
+
         url = f"{self.config.github.base_url}/repos/{owner}/{repo}/pulls/{pr_number}"
         headers = dict(self.github_session.headers)
         headers["Accept"] = "application/vnd.github.v3.diff"
@@ -71,7 +83,24 @@ class AgenticPRReviewer:
         response = self.github_session.get(url, headers=headers)
         response.raise_for_status()
 
+        self._cached_diff_key = key
+        self._cached_diff_text = response.text
+        if hasattr(self, "_cached_parsed_diff"):
+            delattr(self, "_cached_parsed_diff")
+
         return response.text
+
+    def get_parsed_diff(self, owner: str, repo: str, pr_number: int) -> Dict[str, FileDiff]:
+        key = (owner, repo, pr_number)
+
+        if self._cached_parsed_key == key and self._cached_parsed_diff is not None:
+            return self._cached_parsed_diff
+
+        diff_text = self.get_pr_diff(owner, repo, pr_number)
+        parsed: Dict[str, FileDiff] = DiffParser.parse_diff(diff_text)
+        self._cached_parsed_key = key
+        self._cached_parsed_diff = parsed
+        return parsed
 
     def get_repo_for_analysis(self, owner: str, repo: str, pr_details: Dict[str, Any]) -> str:
         """Get repository for analysis, using cache if available."""
@@ -842,14 +871,14 @@ class AgenticPRReviewer:
         repo_name = pr_details["head"]["repo"]["name"]
         pr_number = pr_details["number"]
 
-        # GET THE ACTUAL DIFF WITH CORRECT LINE NUMBERS (same as standard reviewer)
         try:
-            pr_diff = self.get_pr_diff(owner, repo_name, pr_number)
+            pr_diff = self.get_pr_diff(owner, repo_name, pr_number)  # cached
+            diff_files = self.get_parsed_diff(owner, repo_name, pr_number)
         except Exception as e:
             pr_diff = f"Error retrieving diff: {e}"
+            diff_files = {}
 
         # Parse diff for accurate line number mapping
-        diff_files = DiffParser.parse_diff(pr_diff)
         line_number_context = DiffParser.generate_line_number_context(diff_files)
 
         pr_status = (

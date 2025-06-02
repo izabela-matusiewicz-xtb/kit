@@ -13,7 +13,7 @@ from kit import Repository
 from .cache import RepoCache
 from .config import LLMProvider, ReviewConfig
 from .cost_tracker import CostTracker
-from .diff_parser import DiffParser
+from .diff_parser import DiffParser, FileDiff
 from .file_prioritizer import FilePrioritizer
 from .validator import validate_review_quality
 
@@ -34,6 +34,12 @@ class PRReviewer:
         self._llm_client: Optional[Any] = None  # Will be Anthropic or OpenAI client
         self.repo_cache = RepoCache(config)
         self.cost_tracker = CostTracker(config.custom_pricing)
+
+        # Diff caching (initialized to None, filled lazily)
+        self._cached_diff_key: Optional[tuple[str, str, int]] = None
+        self._cached_diff_text: Optional[str] = None
+        self._cached_parsed_diff: Optional[Dict[str, FileDiff]] = None
+        self._cached_parsed_key: Optional[tuple[str, str, int]] = None
 
     def parse_pr_url(self, pr_input: str) -> tuple[str, str, int]:
         """Parse PR URL or number to extract owner, repo, and PR number.
@@ -82,12 +88,28 @@ class PRReviewer:
 
     def get_pr_diff(self, owner: str, repo: str, pr_number: int) -> str:
         """Get the full diff for the PR."""
+        key = (owner, repo, pr_number)
+
+        # Return cached diff text if we already fetched it
+        if getattr(self, "_cached_diff_key", None) == key and hasattr(self, "_cached_diff_text"):
+            # mypy: we know _cached_diff_text is not None because key matched and attribute exists
+            assert self._cached_diff_text is not None
+            return self._cached_diff_text
+
         url = f"{self.config.github.base_url}/repos/{owner}/{repo}/pulls/{pr_number}"
         headers = dict(self.github_session.headers)
         headers["Accept"] = "application/vnd.github.v3.diff"
 
         response = self.github_session.get(url, headers=headers)
         response.raise_for_status()
+
+        # Cache the result
+        self._cached_diff_key = key
+        self._cached_diff_text = response.text
+
+        # Invalidate parsed cache (if any) because diff may have changed
+        if hasattr(self, "_cached_parsed_diff"):
+            delattr(self, "_cached_parsed_diff")
 
         return response.text
 
@@ -114,12 +136,13 @@ class PRReviewer:
         owner, repo_name = pr_details["head"]["repo"]["owner"]["login"], pr_details["head"]["repo"]["name"]
         pr_number = pr_details["number"]
         try:
-            pr_diff = self.get_pr_diff(owner, repo_name, pr_number)
+            pr_diff = self.get_pr_diff(owner, repo_name, pr_number)  # cached
+            diff_files = self.get_parsed_diff(owner, repo_name, pr_number)
         except Exception as e:
             pr_diff = f"Error retrieving diff: {e}"
+            diff_files = {}
 
         # Parse diff for accurate line number mapping
-        diff_files = DiffParser.parse_diff(pr_diff)
         line_number_context = DiffParser.generate_line_number_context(diff_files)
 
         # Prioritize files for analysis (smart prioritization for Kit reviewer)
@@ -337,7 +360,7 @@ class PRReviewer:
 
                         # Validate review quality
                         try:
-                            pr_diff = self.get_pr_diff(owner, repo, pr_number)
+                            pr_diff = self.get_pr_diff(owner, repo, pr_number)  # cached
                             changed_files = [f["filename"] for f in files]
                             validation = validate_review_quality(analysis, pr_diff, changed_files)
 
@@ -412,3 +435,18 @@ class PRReviewer:
             return getattr(kit, "__version__", "dev")
         except Exception:
             return "dev"
+
+    def get_parsed_diff(self, owner: str, repo: str, pr_number: int) -> Dict[str, FileDiff]:
+        """Return a cached parsed diff so we don't re-parse the same content multiple times."""
+
+        key = (owner, repo, pr_number)
+
+        # Return cached parsed diff if key matches
+        if self._cached_parsed_key == key and self._cached_parsed_diff is not None:
+            return self._cached_parsed_diff
+
+        diff_text = self.get_pr_diff(owner, repo, pr_number)
+        parsed: Dict[str, FileDiff] = DiffParser.parse_diff(diff_text)
+        self._cached_parsed_key = key
+        self._cached_parsed_diff = parsed
+        return parsed
