@@ -82,12 +82,10 @@ kit usages /path/to/repo "MyClass"
 # Export data for external tools
 kit export /path/to/repo symbols symbols.json
 
-# Initialize configuration
+# Initialize configuration and review a PR
 kit review --init-config
-
-# Review a PR
-kit review https://github.com/owner/repo/pull/123
 kit review --dry-run https://github.com/owner/repo/pull/123
+kit review https://github.com/owner/repo/pull/123
 ```
 
 The CLI supports all major repository operations with Unix-friendly output for scripting and automation. See the [CLI Documentation](https://kit.cased.com/introduction/cli) for comprehensive usage examples.
