@@ -14,6 +14,7 @@ class LLMProvider(Enum):
 
     ANTHROPIC = "anthropic"
     OPENAI = "openai"
+    OLLAMA = "ollama"  # Dedicated Ollama provider
 
 
 class ReviewDepth(Enum):
@@ -37,6 +38,30 @@ def _detect_provider_from_model(model_name: str) -> Optional[LLMProvider]:
     anthropic_patterns = ["claude-", "haiku", "sonnet", "opus"]
     if any(pattern in model_lower for pattern in anthropic_patterns):
         return LLMProvider.ANTHROPIC
+
+    # Ollama model patterns - popular models available in Ollama
+    ollama_patterns = [
+        "llama",
+        "mistral",
+        "codellama",
+        "deepseek",
+        "qwen",
+        "phi",
+        "gemma",
+        "wizardcoder",
+        "starcoder",
+        "codegemma",
+        "solar",
+        "nous-hermes",
+        "openchat",
+        "zephyr",
+        "orca",
+        "vicuna",
+        "alpaca",
+        "devstral",
+    ]
+    if any(pattern in model_lower for pattern in ollama_patterns):
+        return LLMProvider.OLLAMA
 
     return None
 
@@ -78,6 +103,7 @@ class LLMConfig:
     api_key: str
     max_tokens: int = 4000
     temperature: float = 0.1
+    api_base_url: Optional[str] = None  # For local LLMs or custom OpenAI endpoints
 
 
 @dataclass
@@ -148,6 +174,11 @@ class ReviewConfig:
             if _is_placeholder_token(config_api_key):
                 config_api_key = None  # Treat placeholder as missing
             api_key = config_api_key or os.getenv("KIT_ANTHROPIC_TOKEN") or os.getenv("ANTHROPIC_API_KEY")
+        elif provider == LLMProvider.OLLAMA:
+            default_model = "qwen2.5-coder:latest"  # Latest code-specialized model
+            api_key_env = "None (Ollama doesn't require API keys)"
+            # Ollama doesn't need an API key, but we'll use a placeholder for consistency
+            api_key = llm_data.get("api_key", "ollama")
         else:  # OpenAI
             default_model = "gpt-4.1-2025-04-14"
             api_key_env = "KIT_OPENAI_TOKEN or OPENAI_API_KEY"
@@ -156,7 +187,8 @@ class ReviewConfig:
                 config_api_key = None  # Treat placeholder as missing
             api_key = config_api_key or os.getenv("KIT_OPENAI_TOKEN") or os.getenv("OPENAI_API_KEY")
 
-        if not api_key:
+        # Ollama doesn't require API keys, so skip validation for it
+        if not api_key and provider != LLMProvider.OLLAMA:
             raise ValueError(
                 f"LLM API key required. Set {api_key_env} environment variable or "
                 f"add 'llm.api_key' to ~/.kit/review-config.yaml"
@@ -165,10 +197,15 @@ class ReviewConfig:
         llm_config = LLMConfig(
             provider=provider,
             model=llm_data.get("model", default_model),
-            api_key=api_key,
+            api_key=str(api_key),
             max_tokens=llm_data.get("max_tokens", 4000),
             temperature=llm_data.get("temperature", 0.1),
+            api_base_url=llm_data.get("api_base_url"),
         )
+
+        # Set default base URLs for local providers
+        if llm_config.provider == LLMProvider.OLLAMA and not llm_config.api_base_url:
+            llm_config.api_base_url = "http://localhost:11434"  # Default Ollama API endpoint
 
         # Review settings
         review_data = config_data.get("review", {})
@@ -241,5 +278,20 @@ class ReviewConfig:
 
         with open(config_path, "w") as f:
             yaml.dump(default_config, f, default_flow_style=False, indent=2)
+
+        # Add a commented-out example for local Ollama usage
+        local_ollama_example = """\
+# Example Ollama configuration (completely free local AI):
+# llm:
+#   provider: ollama
+#   model: "qwen2.5-coder:latest"  # Or deepseek-r1:latest, gemma3:latest, etc.
+#   api_base_url: "http://localhost:11434"  # Default Ollama endpoint
+#   api_key: "ollama"  # Placeholder (Ollama doesn't use API keys)
+#   max_tokens: 2000
+#   temperature: 0.1
+"""
+
+        with open(config_path, "a") as f:
+            f.write("\n" + local_ollama_example)
 
         return config_path
