@@ -212,8 +212,19 @@ custom_pricing:
 # Standard mode (recommended)
 kit review https://github.com/owner/repo/pull/123
 
-# Dry run (no posting)
+# Dry run (formatted preview without posting)
 kit review --dry-run https://github.com/owner/repo/pull/123
+
+# Plain output for piping to other tools
+kit review --plain https://github.com/owner/repo/pull/123
+kit review -p https://github.com/owner/repo/pull/123
+
+# Override model for specific review
+kit review --model gpt-4.1-nano https://github.com/owner/repo/pull/123
+
+# Pipe to Claude Code for implementation
+kit review -p https://github.com/owner/repo/pull/123 | \
+  claude "Implement all the suggestions from this code review"
 
 # Agentic mode (experimental)
 kit review --agentic --agentic-turns 8 https://github.com/owner/repo/pull/123
