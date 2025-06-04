@@ -123,6 +123,11 @@ class TestOllamaSummarizer:
     @patch("requests.Session")
     def test_ollama_function_summarization(self, mock_session, mock_repo):
         """Test function summarization with Ollama."""
+        # Setup mock repo to return function symbols
+        mock_repo.extract_symbols.return_value = [
+            {"name": "hello", "type": "FUNCTION", "code": "def hello():\n    print('Hello, World!')"}
+        ]
+
         # Setup mock response
         mock_session_instance = Mock()
         mock_response = Mock()
