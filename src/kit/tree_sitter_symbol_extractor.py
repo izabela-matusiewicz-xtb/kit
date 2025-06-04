@@ -162,7 +162,7 @@ class TreeSitterSymbolExtractor:
                 else:
                     # Fallback: infer symbol type from first capture label (e.g., 'function', 'class')
                     fallback_label = next(iter(captures.keys()), "symbol")
-                    symbol_type = fallback_label.lstrip("definition.").lstrip("@")
+                    symbol_type = fallback_label.removeprefix("definition.").removeprefix("@")
 
                 # Determine the node for the full symbol body, its span, and its code content.
                 # Default to actual_name_node if no specific body capture is found.
