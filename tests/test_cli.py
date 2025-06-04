@@ -27,6 +27,94 @@ def mock_repo():
         yield mock_instance
 
 
+class TestReviewCommand:
+    """Tests for the review command."""
+
+    @patch("kit.pr_review.config.ReviewConfig.from_file")
+    @patch("kit.pr_review.reviewer.PRReviewer")
+    def test_review_plain_flag(self, mock_pr_reviewer_class, mock_config_from_file, runner):
+        """Test review command with --plain flag outputs raw content."""
+        # Mock the config
+        mock_config = MagicMock()
+        mock_config.llm.model = "gpt-4o"
+        mock_config_from_file.return_value = mock_config
+
+        # Mock the reviewer
+        mock_reviewer_instance = MagicMock()
+        mock_reviewer_instance.review_pr.return_value = "This is a test review comment."
+        mock_pr_reviewer_class.return_value = mock_reviewer_instance
+
+        # Mock CostTracker.is_valid_model to return True
+        with patch("kit.pr_review.cost_tracker.CostTracker.is_valid_model", return_value=True):
+            result = runner.invoke(app, ["review", "--plain", "https://github.com/test/repo/pull/123"])
+
+            assert result.exit_code == 0
+            # Should output just the review content, no formatting
+            assert result.stdout.strip() == "This is a test review comment."
+            # Should not contain any formatting characters
+            assert "=" not in result.stdout
+            assert "🔍" not in result.stdout
+            assert "✅" not in result.stdout
+
+        # Verify that post_as_comment was set to False
+        assert mock_config.post_as_comment is False
+
+    @patch("kit.pr_review.config.ReviewConfig.from_file")
+    @patch("kit.pr_review.reviewer.PRReviewer")
+    def test_review_plain_flag_short_form(self, mock_pr_reviewer_class, mock_config_from_file, runner):
+        """Test review command with -p flag (short form) works the same."""
+        # Mock the config
+        mock_config = MagicMock()
+        mock_config.llm.model = "gpt-4o"
+        mock_config_from_file.return_value = mock_config
+
+        # Mock the reviewer
+        mock_reviewer_instance = MagicMock()
+        mock_reviewer_instance.review_pr.return_value = "Short form test review."
+        mock_pr_reviewer_class.return_value = mock_reviewer_instance
+
+        # Mock CostTracker.is_valid_model to return True
+        with patch("kit.pr_review.cost_tracker.CostTracker.is_valid_model", return_value=True):
+            result = runner.invoke(app, ["review", "-p", "https://github.com/test/repo/pull/123"])
+
+            assert result.exit_code == 0
+            # Should output just the review content
+            assert result.stdout.strip() == "Short form test review."
+
+        # Verify that post_as_comment was set to False
+        assert mock_config.post_as_comment is False
+
+    @patch("kit.pr_review.config.ReviewConfig.from_file")
+    @patch("kit.pr_review.reviewer.PRReviewer")
+    def test_review_dry_run_vs_plain(self, mock_pr_reviewer_class, mock_config_from_file, runner):
+        """Test that --dry-run and --plain produce different output formats."""
+        # Mock the config
+        mock_config = MagicMock()
+        mock_config.llm.model = "gpt-4o"
+        mock_config_from_file.return_value = mock_config
+
+        # Mock the reviewer
+        mock_reviewer_instance = MagicMock()
+        mock_reviewer_instance.review_pr.return_value = "Test review content."
+        mock_pr_reviewer_class.return_value = mock_reviewer_instance
+
+        # Mock CostTracker.is_valid_model to return True
+        with patch("kit.pr_review.cost_tracker.CostTracker.is_valid_model", return_value=True):
+            # Test --dry-run (should have formatting)
+            result_dry_run = runner.invoke(app, ["review", "--dry-run", "https://github.com/test/repo/pull/123"])
+            assert result_dry_run.exit_code == 0
+            assert "REVIEW COMMENT THAT WOULD BE POSTED:" in result_dry_run.stdout
+            assert "=" in result_dry_run.stdout
+            assert "Test review content." in result_dry_run.stdout
+
+            # Test --plain (should not have formatting)
+            result_plain = runner.invoke(app, ["review", "--plain", "https://github.com/test/repo/pull/123"])
+            assert result_plain.exit_code == 0
+            assert result_plain.stdout.strip() == "Test review content."
+            assert "REVIEW COMMENT THAT WOULD BE POSTED:" not in result_plain.stdout
+            assert "=" not in result_plain.stdout
+
+
 class TestFileTreeCommand:
     """Tests for the file-tree command."""
 

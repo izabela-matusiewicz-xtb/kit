@@ -12,8 +12,9 @@ from .config import ReviewConfig
 class RepoCache:
     """Manages cached repositories for efficient PR analysis."""
 
-    def __init__(self, config: ReviewConfig):
+    def __init__(self, config: ReviewConfig, quiet: bool = False):
         self.config = config
+        self.quiet = quiet
         self.cache_dir = Path(config.cache_directory).expanduser()
         self.cache_dir.mkdir(parents=True, exist_ok=True)
 
@@ -27,7 +28,8 @@ class RepoCache:
 
         # Check if we have a valid cached version
         if self._is_cache_valid(repo_cache_dir, sha):
-            print(f"Using cached repository: {repo_cache_dir}")
+            if not self.quiet:
+                print(f"Using cached repository: {repo_cache_dir}")
             self._checkout_sha(repo_cache_dir, sha)
             return str(repo_cache_dir)
 
@@ -47,7 +49,8 @@ class RepoCache:
             cache_time = repo_path.stat().st_mtime
             age_hours = (time.time() - cache_time) / 3600
             if age_hours > self.config.cache_ttl_hours:
-                print(f"Cache expired ({age_hours:.1f}h old), refreshing...")
+                if not self.quiet:
+                    print(f"Cache expired ({age_hours:.1f}h old), refreshing...")
                 return False
         except OSError:
             return False
@@ -66,7 +69,8 @@ class RepoCache:
         repo_url = f"https://github.com/{owner}/{repo}.git"
 
         if repo_path.exists():
-            print(f"Updating cached repository: {repo_path}")
+            if not self.quiet:
+                print(f"Updating cached repository: {repo_path}")
             try:
                 # Fetch latest changes
                 subprocess.run(["git", "-C", str(repo_path), "fetch", "origin"], check=True, capture_output=True)
@@ -80,12 +84,14 @@ class RepoCache:
                 return str(repo_path)
 
             except subprocess.CalledProcessError as e:
-                print(f"Failed to update cache, re-cloning: {e}")
+                if not self.quiet:
+                    print(f"Failed to update cache, re-cloning: {e}")
                 # Remove corrupted cache and re-clone
                 shutil.rmtree(repo_path)
 
         # Fresh clone
-        print(f"Cloning repository to cache: {repo_path}")
+        if not self.quiet:
+            print(f"Cloning repository to cache: {repo_path}")
         repo_path.parent.mkdir(parents=True, exist_ok=True)
 
         subprocess.run(["git", "clone", "--depth", "50", repo_url, str(repo_path)], check=True, capture_output=True)
