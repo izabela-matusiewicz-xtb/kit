@@ -369,15 +369,18 @@ class PRReviewer:
                 num_predict=self.config.llm.max_tokens,
             )
 
+            # Strip thinking tokens from reasoning models like DeepSeek R1
+            cleaned_response = _strip_thinking_tokens(response)
+
             # Ollama is free, so no cost tracking needed, but we can track usage
             # For consistency, we'll estimate tokens (very rough)
             estimated_input_tokens = len(enhanced_prompt) // 4
-            estimated_output_tokens = len(response) // 4
+            estimated_output_tokens = len(cleaned_response) // 4
             self.cost_tracker.track_llm_usage(
                 self.config.llm.provider, self.config.llm.model, estimated_input_tokens, estimated_output_tokens
             )
 
-            return response if response else "No response content from Ollama"
+            return cleaned_response if cleaned_response else "No response content from Ollama"
 
         except Exception as e:
             return f"Error during enhanced Ollama analysis: {e}"
@@ -519,3 +522,35 @@ class PRReviewer:
         self._cached_parsed_key = key
         self._cached_parsed_diff = parsed
         return parsed
+
+
+def _strip_thinking_tokens(response: str) -> str:
+    """
+    Strip thinking tokens from LLM responses.
+
+    Reasoning models like DeepSeek R1 include <think>...</think> tags
+    that show internal reasoning but aren't meant for end users.
+    """
+    if not response:
+        return response
+
+    import re
+
+    # Common thinking token patterns used by reasoning models
+    patterns = [
+        r"<think>.*?</think>",  # DeepSeek R1, others
+        r"<thinking>.*?</thinking>",  # Alternative format
+        r"<thought>.*?</thought>",  # Another variant
+        r"<reason>.*?</reason>",  # Reasoning blocks
+    ]
+
+    cleaned = response
+    for pattern in patterns:
+        # Use DOTALL flag to match across newlines
+        cleaned = re.sub(pattern, "", cleaned, flags=re.DOTALL | re.IGNORECASE)
+
+    # Clean up extra whitespace left by removal
+    cleaned = re.sub(r"\n\s*\n\s*\n", "\n\n", cleaned)  # Multiple blank lines
+    cleaned = cleaned.strip()
+
+    return cleaned

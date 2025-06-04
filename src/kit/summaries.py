@@ -120,6 +120,38 @@ MAX_FILE_SUMMARIZE_CHARS = 25000  # Max characters for file content in summarize
 OPENAI_MAX_PROMPT_TOKENS = 15000  # Max tokens for the prompt to OpenAI
 
 
+def _strip_thinking_tokens(response: str) -> str:
+    """
+    Strip thinking tokens from LLM responses.
+
+    Reasoning models like DeepSeek R1 include <think>...</think> tags
+    that show internal reasoning but aren't meant for end users.
+    """
+    if not response:
+        return response
+
+    import re
+
+    # Common thinking token patterns used by reasoning models
+    patterns = [
+        r"<think>.*?</think>",  # DeepSeek R1, others
+        r"<thinking>.*?</thinking>",  # Alternative format
+        r"<thought>.*?</thought>",  # Another variant
+        r"<reason>.*?</reason>",  # Reasoning blocks
+    ]
+
+    cleaned = response
+    for pattern in patterns:
+        # Use DOTALL flag to match across newlines
+        cleaned = re.sub(pattern, "", cleaned, flags=re.DOTALL | re.IGNORECASE)
+
+    # Clean up extra whitespace left by removal
+    cleaned = re.sub(r"\n\s*\n\s*\n", "\n\n", cleaned)  # Multiple blank lines
+    cleaned = cleaned.strip()
+
+    return cleaned
+
+
 class Summarizer:
     """Provides methods to summarize code using a configured LLM."""
 
@@ -552,10 +584,12 @@ class Summarizer:
                 # Use Ollama's generate API with combined prompt
                 combined_prompt = f"{system_prompt_text}\n\n{user_prompt_text}"
                 try:
-                    summary = client.generate(
+                    raw_summary = client.generate(
                         combined_prompt, temperature=self.config.temperature, num_predict=self.config.max_tokens
                     )
-                    logger.debug(f"Ollama API response for {file_path}: {len(summary)} characters")
+                    # Strip thinking tokens from reasoning models like DeepSeek R1
+                    summary = _strip_thinking_tokens(raw_summary)
+                    logger.debug(f"Ollama API response for {file_path}: {len(summary)} characters (after cleaning)")
                 except Exception as e:
                     logger.warning(f"Ollama API error for {file_path}: {e}")
                     summary = f"Summary generation failed: Ollama API error ({e})"
@@ -715,10 +749,14 @@ class Summarizer:
                 # Use Ollama's generate API with combined prompt
                 combined_prompt = f"{system_prompt_text}\n\n{user_prompt_text}"
                 try:
-                    summary = client.generate(
+                    raw_summary = client.generate(
                         combined_prompt, temperature=self.config.temperature, num_predict=self.config.max_tokens
                     )
-                    logger.debug(f"Ollama API response for {function_name} in {file_path}: {len(summary)} characters")
+                    # Strip thinking tokens from reasoning models like DeepSeek R1
+                    summary = _strip_thinking_tokens(raw_summary)
+                    logger.debug(
+                        f"Ollama API response for {function_name} in {file_path}: {len(summary)} characters (after cleaning)"
+                    )
                 except Exception as e:
                     logger.warning(f"Ollama API error for {function_name} in {file_path}: {e}")
                     summary = f"Summary generation failed: Ollama API error ({e})"
@@ -876,10 +914,14 @@ class Summarizer:
                 # Use Ollama's generate API with combined prompt
                 combined_prompt = f"{system_prompt_text}\n\n{user_prompt_text}"
                 try:
-                    summary = client.generate(
+                    raw_summary = client.generate(
                         combined_prompt, temperature=self.config.temperature, num_predict=self.config.max_tokens
                     )
-                    logger.debug(f"Ollama API response for {class_name} in {file_path}: {len(summary)} characters")
+                    # Strip thinking tokens from reasoning models like DeepSeek R1
+                    summary = _strip_thinking_tokens(raw_summary)
+                    logger.debug(
+                        f"Ollama API response for {class_name} in {file_path}: {len(summary)} characters (after cleaning)"
+                    )
                 except Exception as e:
                     logger.warning(f"Ollama API error for {class_name} in {file_path}: {e}")
                     summary = f"Summary generation failed: Ollama API error ({e})"
