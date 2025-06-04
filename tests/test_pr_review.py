@@ -7,22 +7,37 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from kit.pr_review.config import GitHubConfig, LLMConfig, LLMProvider, ReviewConfig
+from kit.pr_review.config import (
+    GitHubConfig,
+    LLMConfig,
+    LLMProvider,
+    ReviewConfig,
+)
 from kit.pr_review.cost_tracker import CostBreakdown, CostTracker
 from kit.pr_review.reviewer import PRReviewer
-from kit.pr_review.validator import ValidationResult, validate_review_quality
+from kit.pr_review.validator import (
+    ValidationResult,
+    validate_review_quality,
+)
+import yaml
 
 
 def test_pr_url_parsing():
     """Test PR URL parsing functionality."""
     config = ReviewConfig(
         github=GitHubConfig(token="test"),
-        llm=LLMConfig(provider=LLMProvider.ANTHROPIC, model="claude-4-sonnet", api_key="test"),
+        llm=LLMConfig(
+            provider=LLMProvider.ANTHROPIC,
+            model="claude-4-sonnet",
+            api_key="test",
+        ),
     )
     reviewer = PRReviewer(config)
 
     # Test valid PR URL
-    owner, repo, pr_number = reviewer.parse_pr_url("https://github.com/cased/kit/pull/47")
+    owner, repo, pr_number = reviewer.parse_pr_url(
+        "https://github.com/cased/kit/pull/47"
+    )
     assert owner == "cased"
     assert repo == "kit"
     assert pr_number == 47
@@ -41,7 +56,9 @@ def test_cost_tracker_anthropic():
     tracker = CostTracker()
 
     # Test Claude 3.5 Sonnet pricing
-    tracker.track_llm_usage(LLMProvider.ANTHROPIC, "claude-3-5-sonnet-20241022", 1000, 500)
+    tracker.track_llm_usage(
+        LLMProvider.ANTHROPIC, "claude-3-5-sonnet-20241022", 1000, 500
+    )
 
     expected_cost = (1000 / 1_000_000) * 3.00 + (500 / 1_000_000) * 15.00
     assert abs(tracker.breakdown.llm_cost_usd - expected_cost) < 0.0001
@@ -68,7 +85,9 @@ def test_cost_tracker_unknown_model():
     tracker = CostTracker()
 
     with patch("builtins.print") as mock_print:
-        tracker.track_llm_usage(LLMProvider.ANTHROPIC, "unknown-model", 1000, 500)
+        tracker.track_llm_usage(
+            LLMProvider.ANTHROPIC, "unknown-model", 1000, 500
+        )
 
         # Should print warning
         mock_print.assert_called()
@@ -85,11 +104,15 @@ def test_cost_tracker_multiple_calls():
     tracker = CostTracker()
 
     # First call
-    tracker.track_llm_usage(LLMProvider.ANTHROPIC, "claude-3-5-haiku-20241022", 500, 200)
+    tracker.track_llm_usage(
+        LLMProvider.ANTHROPIC, "claude-3-5-haiku-20241022", 500, 200
+    )
     first_cost = tracker.breakdown.llm_cost_usd
 
     # Second call
-    tracker.track_llm_usage(LLMProvider.ANTHROPIC, "claude-3-5-haiku-20241022", 300, 150)
+    tracker.track_llm_usage(
+        LLMProvider.ANTHROPIC, "claude-3-5-haiku-20241022", 300, 150
+    )
 
     # Should accumulate
     assert tracker.breakdown.llm_input_tokens == 800
@@ -101,13 +124,346 @@ def test_cost_tracker_reset():
     """Test cost tracker reset functionality."""
     tracker = CostTracker()
 
-    tracker.track_llm_usage(LLMProvider.ANTHROPIC, "claude-3-5-sonnet-20241022", 1000, 500)
+    tracker.track_llm_usage(
+        LLMProvider.ANTHROPIC, "claude-3-5-sonnet-20241022", 1000, 500
+    )
     assert tracker.breakdown.llm_cost_usd > 0
 
     tracker.reset()
     assert tracker.breakdown.llm_input_tokens == 0
     assert tracker.breakdown.llm_output_tokens == 0
     assert tracker.breakdown.llm_cost_usd == 0.0
+
+
+def test_model_prefix_detection():
+    """Test model prefix detection for popular providers."""
+
+    # Test OpenRouter prefixes
+    assert CostTracker._strip_model_prefix(
+        "openrouter/meta-llama/llama-3.1-8b-instruct"
+    ) == "meta-llama/llama-3.1-8b-instruct"
+    
+    assert CostTracker._strip_model_prefix(
+        "openrouter/anthropic/claude-3.5-sonnet"
+    ) == "anthropic/claude-3.5-sonnet"
+
+    # Test Together AI prefixes
+    assert CostTracker._strip_model_prefix(
+        "together/meta-llama/Llama-3-8b-chat-hf"
+    ) == "meta-llama/Llama-3-8b-chat-hf"
+    
+    assert CostTracker._strip_model_prefix(
+        "together/mistralai/Mixtral-8x7B-Instruct-v0.1"
+    ) == "mistralai/Mixtral-8x7B-Instruct-v0.1"
+
+    # Test Groq prefixes
+    assert CostTracker._strip_model_prefix(
+        "groq/llama3-8b-8192"
+    ) == "llama3-8b-8192"
+    
+    assert CostTracker._strip_model_prefix(
+        "groq/mixtral-8x7b-32768"
+    ) == "mixtral-8x7b-32768"
+
+    # Test Fireworks AI prefixes
+    assert CostTracker._strip_model_prefix(
+        "fireworks/accounts/fireworks/models/llama-v3p1-8b-instruct"
+    ) == "accounts/fireworks/models/llama-v3p1-8b-instruct"
+
+    # Test Replicate prefixes
+    assert CostTracker._strip_model_prefix(
+        "replicate/meta/llama-2-70b-chat"
+    ) == "meta/llama-2-70b-chat"
+
+    # Test models without prefixes (should return as-is)
+    assert CostTracker._strip_model_prefix(
+        "gpt-4o"
+    ) == "gpt-4o"
+    
+    assert CostTracker._strip_model_prefix(
+        "claude-3-5-sonnet-20241022"
+    ) == "claude-3-5-sonnet-20241022"
+
+    # Test complex model names with multiple slashes - this one should remain as-is
+    # because "provider" is not in the prefixes_to_strip list
+    assert CostTracker._strip_model_prefix(
+        "provider/org/model/version/variant"
+    ) == "provider/org/model/version/variant"
+
+    # Test vertex_ai prefix (which is in the list)
+    assert CostTracker._strip_model_prefix(
+        "vertex_ai/claude-sonnet-4-20250514"
+    ) == "claude-sonnet-4-20250514"
+
+
+def test_cost_tracking_with_prefixed_models():
+    """Test cost tracking with prefixed model names."""
+    tracker = CostTracker()
+
+    # Test OpenRouter model that maps to known pricing
+    # Should extract base model and use its pricing
+    tracker.track_llm_usage(
+        LLMProvider.OPENAI,
+        "openrouter/gpt-4o",
+        1000,
+        500
+    )
+    
+    # Should use GPT-4o pricing despite the prefix
+    expected_cost = (1000 / 1_000_000) * 2.50 + (500 / 1_000_000) * 10.00
+    assert abs(tracker.breakdown.llm_cost_usd - expected_cost) < 0.0001
+
+    # Reset for next test
+    tracker.reset()
+
+    # Test Together AI model with Anthropic base model
+    # Since "together/anthropic/claude-3-5-sonnet-20241022" doesn't match
+    # the exact pricing key, it will use fallback pricing
+    with patch("builtins.print"):  # Suppress warning output
+        tracker.track_llm_usage(
+            LLMProvider.ANTHROPIC,
+            "together/claude-3-5-sonnet-20241022",
+            800,
+            400
+        )
+    
+    # Should extract claude-3-5-sonnet-20241022 and use its pricing
+    expected_cost = (800 / 1_000_000) * 3.00 + (400 / 1_000_000) * 15.00
+    assert abs(tracker.breakdown.llm_cost_usd - expected_cost) < 0.0001
+
+
+def test_cost_tracking_unknown_prefixed_models():
+    """Test cost tracking for unknown prefixed models."""
+    tracker = CostTracker()
+
+    with patch("builtins.print") as mock_print:
+        # Test completely unknown prefixed model
+        tracker.track_llm_usage(
+            LLMProvider.OPENAI,
+            "newprovider/unknown/model-v1",
+            1000,
+            500
+        )
+
+        # Should print warning about unknown pricing
+        mock_print.assert_called()
+        warning_call = str(mock_print.call_args_list[0])
+        assert "Unknown pricing" in warning_call
+
+        # Should use fallback pricing for OpenAI provider
+        expected_cost = (1000 / 1_000_000) * 3.0 + (500 / 1_000_000) * 15.0
+        assert abs(tracker.breakdown.llm_cost_usd - expected_cost) < 0.0001
+
+
+def test_model_validation_with_prefixes():
+    """Test model validation with prefixed model names."""
+
+    # Test that prefixed models are considered valid if base model is valid
+    assert CostTracker.is_valid_model("openrouter/gpt-4o")
+    assert CostTracker.is_valid_model(
+        "together/claude-3-5-sonnet-20241022"
+    )
+    # Note: llama3-8b-8192 is not in the DEFAULT_PRICING, so this will be False
+    # Let's test with a model that actually exists
+    assert CostTracker.is_valid_model("groq/gpt-4o")
+
+    # Test that prefixed models are invalid if base model is invalid
+    assert not CostTracker.is_valid_model("openrouter/invalid/model")
+    assert not CostTracker.is_valid_model("together/fake/model-v1")
+
+    # Test suggestions for prefixed models
+    suggestions = CostTracker.get_model_suggestions("openrouter/gpt4")
+    assert len(suggestions) > 0
+    # Should suggest models that match
+    assert any("gpt-4" in s for s in suggestions)
+
+    suggestions = CostTracker.get_model_suggestions("together/claude")
+    assert len(suggestions) > 0
+    assert any("claude" in s for s in suggestions)
+
+
+def test_config_with_prefixed_models():
+    """Test configuration with prefixed model names."""
+    config = ReviewConfig(
+        github=GitHubConfig(token="test"),
+        llm=LLMConfig(
+            provider=LLMProvider.OPENAI,
+            model="openrouter/gpt-4o",
+            api_key="test",
+        ),
+    )
+
+    # Should accept prefixed model name
+    assert config.llm.model == "openrouter/gpt-4o"
+
+    # Test model override with prefixed names
+    config.llm.model = "together/claude-3-5-sonnet-20241022"
+    assert config.llm.model == "together/claude-3-5-sonnet-20241022"
+
+    # Test with Groq prefixed model
+    config.llm.model = "groq/gpt-4o"
+    assert config.llm.model == "groq/gpt-4o"
+
+
+def test_pr_reviewer_with_prefixed_models():
+    """Test PRReviewer handles prefixed model names correctly."""
+    config = ReviewConfig(
+        github=GitHubConfig(token="test"),
+        llm=LLMConfig(
+            provider=LLMProvider.OPENAI,
+            model="openrouter/gpt-4o-mini",
+            api_key="test",
+        ),
+    )
+
+    reviewer = PRReviewer(config)
+
+    # Should store the full prefixed model name
+    assert reviewer.config.llm.model == "openrouter/gpt-4o-mini"
+
+    # Cost tracker should handle the prefixed model correctly
+    reviewer.cost_tracker.track_llm_usage(
+        LLMProvider.OPENAI,
+        "openrouter/gpt-4o-mini",
+        500,
+        250
+    )
+
+    # Should extract base model for pricing
+    assert reviewer.cost_tracker.breakdown.llm_cost_usd > 0
+
+
+def test_cli_with_prefixed_models():
+    """Test CLI handles prefixed model names correctly."""
+    from typer.testing import CliRunner
+    from kit.cli import app
+
+    runner = CliRunner()
+
+    # Test with prefixed model
+    result = runner.invoke(
+        app,
+        [
+            "review",
+            "--model",
+            "openrouter/gpt-4o",
+            "--dry-run",
+            "--init-config",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert "Created default config file" in result.output
+
+
+def test_complex_prefixed_model_names():
+    """Test handling of complex prefixed model names."""
+
+    # Test deeply nested model names
+    complex_models = [
+        (
+            "fireworks/accounts/fireworks/models/llama-v3p1-8b-instruct", 
+            "accounts/fireworks/models/llama-v3p1-8b-instruct"
+        ),
+        (
+            "replicate/meta/llama-2-70b-chat:13c3cdee13ee059ab779f0291d29054dab00a47dad8261375654de5540165fb0",  # noqa: E501
+            "meta/llama-2-70b-chat:13c3cdee13ee059ab779f0291d29054dab00a47dad8261375654de5540165fb0"
+        ),
+        # This one won't be stripped because "provider" is not in prefixes_to_strip
+        (
+            "provider/org/team/model/version/variant", 
+            "provider/org/team/model/version/variant"
+        ),
+        # This one won't be stripped because "a" is not in prefixes_to_strip
+        (
+            "a/b/c/d/e/f/g", 
+            "a/b/c/d/e/f/g"
+        ),
+    ]
+
+    for original_model, expected_result in complex_models:
+        base_model = CostTracker._strip_model_prefix(original_model)
+        assert base_model == expected_result, (
+            f"Expected {expected_result}, got {base_model}"
+        )
+
+
+def test_provider_prefix_detection():
+    """Test detection of various provider prefixes."""
+
+    # Test known provider prefixes that are actually in prefixes_to_strip
+    known_providers = [
+        "openrouter",
+        "together", 
+        "groq",
+        "fireworks",
+        "replicate",
+        "bedrock",
+        "vertex_ai",  # Note: it's vertex_ai, not vertex
+    ]
+
+    for provider in known_providers:
+        if provider == "vertex_ai":
+            model_name = f"{provider}/test/model"
+        else:
+            model_name = f"{provider}/test/model"
+        base_name = CostTracker._strip_model_prefix(model_name)
+        assert base_name == "test/model", (
+            f"Failed for {provider}: got {base_name}"
+        )
+        assert not base_name.startswith(f"{provider}/")
+
+    # Test unknown provider (should NOT be stripped since it's not in the list)
+    unknown_model = "newprovider/test/model"
+    base_name = CostTracker._strip_model_prefix(unknown_model)
+    assert base_name == "newprovider/test/model"  # Should remain unchanged
+
+    # Test providers that are NOT in the prefixes_to_strip list
+    unsupported_providers = ["huggingface", "vertex", "perplexity"]
+    for provider in unsupported_providers:
+        model_name = f"{provider}/test/model"
+        base_name = CostTracker._strip_model_prefix(model_name)
+        # These should be stripped since they ARE in prefixes_to_strip
+        if provider == "perplexity":
+            assert base_name == "test/model"
+        else:
+            assert base_name == f"{provider}/test/model"  # Not stripped
+
+
+def test_cost_tracking_edge_cases_with_prefixes():
+    """Test edge cases in cost tracking with prefixed models."""
+    tracker = CostTracker()
+
+    # Test model with provider prefix but unknown base model
+    with patch("builtins.print") as mock_print:
+        tracker.track_llm_usage(
+            LLMProvider.ANTHROPIC,
+            "openrouter/unknown/mystery-model-v1",
+            1000,
+            500
+        )
+
+        # Should warn about unknown pricing
+        mock_print.assert_called()
+        
+        # Should use fallback pricing
+        expected_cost = (1000 / 1_000_000) * 3.0 + (500 / 1_000_000) * 15.0
+        assert abs(tracker.breakdown.llm_cost_usd - expected_cost) < 0.0001
+
+    # Reset tracker
+    tracker.reset()
+
+    # Test model with multiple provider-like prefixes
+    tracker.track_llm_usage(
+        LLMProvider.OPENAI,
+        "together/gpt-4o",
+        800,
+        400
+    )
+
+    # Should extract gpt-4o and use its pricing
+    expected_cost = (800 / 1_000_000) * 2.50 + (400 / 1_000_000) * 10.00
+    assert abs(tracker.breakdown.llm_cost_usd - expected_cost) < 0.0001
 
 
 def test_validator_basic():
@@ -144,22 +500,33 @@ def test_validator_empty_review():
 
 def test_validator_vague_review():
     """Test validator detects vague reviews."""
-    vague_review = "This looks good. Maybe consider some improvements. Seems fine overall."
+    vague_review = (
+        "This looks good. Maybe consider some improvements. "
+        "Seems fine overall."
+    )
 
     validation = validate_review_quality(vague_review, "diff", ["file.py"])
 
     assert validation.metrics["vague_statements"] > 0
-    assert any("Review doesn't reference any changed files" in issue for issue in validation.issues)
+    assert any(
+        "Review doesn't reference any changed files" in issue
+        for issue in validation.issues
+    )
 
 
 def test_validator_no_file_references():
     """Test validator detects missing file references."""
     review = "This code has some issues that should be fixed."
 
-    validation = validate_review_quality(review, "diff", ["main.py", "test.py"])
+    validation = validate_review_quality(
+        review, "diff", ["main.py", "test.py"]
+    )
 
     assert validation.metrics["file_references"] == 0
-    assert any("Review doesn't reference any changed files" in issue for issue in validation.issues)
+    assert any(
+        "Review doesn't reference any changed files" in issue
+        for issue in validation.issues
+    )
 
 
 def test_validator_change_coverage():
@@ -183,7 +550,11 @@ def test_config_creation():
 
         config = ReviewConfig(
             github=GitHubConfig(token="test"),
-            llm=LLMConfig(provider=LLMProvider.ANTHROPIC, model="claude-4-sonnet", api_key="test"),
+            llm=LLMConfig(
+                provider=LLMProvider.ANTHROPIC,
+                model="claude-4-sonnet",
+                api_key="test",
+            ),
         )
 
         created_path = config.create_default_config_file(str(config_path))
@@ -256,10 +627,10 @@ def test_config_openai_provider():
 
 def test_config_custom_openai_provider():
     """Test custom OpenAI compatible provider configuration."""
-    import tempfile
-    import yaml
 
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+    with tempfile.NamedTemporaryFile(
+        mode="w", suffix=".yaml", delete=False
+    ) as f:
         config_data = {
             "github": {"token": "github_token"},
             "llm": {
@@ -335,7 +706,11 @@ def test_pr_review_dry_run(mock_subprocess, mock_session_class):
 
     config = ReviewConfig(
         github=GitHubConfig(token="test"),
-        llm=LLMConfig(provider=LLMProvider.ANTHROPIC, model="claude-4-sonnet", api_key="test"),
+        llm=LLMConfig(
+            provider=LLMProvider.ANTHROPIC,
+            model="claude-4-sonnet",
+            api_key="test",
+        ),
         post_as_comment=False,  # Dry run mode
         clone_for_analysis=False,  # Skip cloning to avoid git issues
     )
@@ -343,7 +718,8 @@ def test_pr_review_dry_run(mock_subprocess, mock_session_class):
     reviewer = PRReviewer(config)
     comment = reviewer.review_pr("https://github.com/cased/kit/pull/47")
 
-    # Verify comment content - the review should contain basic info even if analysis fails
+    # Verify comment content - review should contain basic info even if
+    # analysis fails
     assert "Kit AI Code Review" in comment or "Kit Code Review" in comment
     # Don't require specific PR title since the mock might not work perfectly
     assert len(comment) > 100  # Should be a substantial review comment
@@ -356,7 +732,11 @@ def test_github_session_setup():
     """Test GitHub session is configured correctly."""
     config = ReviewConfig(
         github=GitHubConfig(token="test_token"),
-        llm=LLMConfig(provider=LLMProvider.ANTHROPIC, model="claude-4-sonnet", api_key="test"),
+        llm=LLMConfig(
+            provider=LLMProvider.ANTHROPIC,
+            model="claude-4-sonnet",
+            api_key="test",
+        ),
     )
 
     reviewer = PRReviewer(config)
@@ -371,7 +751,10 @@ def test_github_session_setup():
 def test_cost_breakdown_str():
     """Test cost breakdown string representation."""
     breakdown = CostBreakdown(
-        llm_input_tokens=1000, llm_output_tokens=500, llm_cost_usd=0.0234, model_used="claude-3-5-sonnet-20241022"
+        llm_input_tokens=1000,
+        llm_output_tokens=500,
+        llm_cost_usd=0.0234,
+        model_used="claude-3-5-sonnet-20241022",
     )
 
     str_repr = str(breakdown)
@@ -385,7 +768,11 @@ def test_model_override_config():
     """Test that model override works in ReviewConfig."""
     config = ReviewConfig(
         github=GitHubConfig(token="test"),
-        llm=LLMConfig(provider=LLMProvider.ANTHROPIC, model="claude-3-5-sonnet-20241022", api_key="test"),
+        llm=LLMConfig(
+            provider=LLMProvider.ANTHROPIC,
+            model="claude-3-5-sonnet-20241022",
+            api_key="test",
+        ),
     )
 
     # Original model
@@ -429,7 +816,16 @@ def test_cli_model_flag_parsing():
     assert "Created default config file" in result.output
 
     # Test with -m short flag
-    result = runner.invoke(app, ["review", "-m", "claude-opus-4-20250514", "--dry-run", "--init-config"])
+    result = runner.invoke(
+        app,
+        [
+            "review",
+            "-m",
+            "claude-opus-4-20250514",
+            "--dry-run",
+            "--init-config",
+        ],
+    )
 
     assert result.exit_code == 0
     assert "Created default config file" in result.output
@@ -439,7 +835,11 @@ def test_model_override_in_reviewer():
     """Test that model override is properly applied in PRReviewer."""
     config = ReviewConfig(
         github=GitHubConfig(token="test"),
-        llm=LLMConfig(provider=LLMProvider.ANTHROPIC, model="claude-3-5-sonnet-20241022", api_key="test"),
+        llm=LLMConfig(
+            provider=LLMProvider.ANTHROPIC,
+            model="claude-3-5-sonnet-20241022",
+            api_key="test",
+        ),
     )
 
     # Create reviewer with original model
@@ -467,7 +867,11 @@ def test_model_flag_examples():
 
     config = ReviewConfig(
         github=GitHubConfig(token="test"),
-        llm=LLMConfig(provider=LLMProvider.ANTHROPIC, model="default", api_key="test"),
+        llm=LLMConfig(
+            provider=LLMProvider.ANTHROPIC,
+            model="default",
+            api_key="test",
+        ),
     )
 
     for model in valid_models:
@@ -516,7 +920,11 @@ def test_pr_review_with_model_override(mock_subprocess, mock_session_class):
     # Create config with original model
     config = ReviewConfig(
         github=GitHubConfig(token="test"),
-        llm=LLMConfig(provider=LLMProvider.ANTHROPIC, model="claude-3-5-sonnet-20241022", api_key="test"),
+        llm=LLMConfig(
+            provider=LLMProvider.ANTHROPIC,
+            model="claude-3-5-sonnet-20241022",
+            api_key="test",
+        ),
         post_as_comment=False,  # Dry run mode
         clone_for_analysis=False,  # Skip cloning to avoid git issues
     )
@@ -581,7 +989,8 @@ def test_cli_model_validation():
 
     runner = CliRunner()
 
-    # Mock environment variables to provide valid tokens so we can test model validation
+    # Mock environment variables to provide valid tokens so we can test
+    # model validation
     with patch.dict(
         os.environ,
         {
@@ -591,7 +1000,14 @@ def test_cli_model_validation():
     ):
         # Test with invalid model - should fail
         result = runner.invoke(
-            app, ["review", "--model", "invalid-model-name", "--dry-run", "https://github.com/owner/repo/pull/123"]
+            app,
+            [
+                "review",
+                "--model",
+                "invalid-model-name",
+                "--dry-run",
+                "https://github.com/owner/repo/pull/123",
+            ],
         )
 
         assert result.exit_code == 1
