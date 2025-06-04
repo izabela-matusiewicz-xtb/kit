@@ -28,15 +28,36 @@ class ReviewDepth(Enum):
 def _detect_provider_from_model(model_name: str) -> Optional[LLMProvider]:
     """Detect LLM provider from model name."""
     model_lower = model_name.lower()
+    
+    # Strip common prefixes first
+    prefixes_to_strip = [
+        "vertex_ai/",
+        "openrouter/", 
+        "together/",
+        "groq/",
+        "fireworks/",
+        "perplexity/",
+        "replicate/",
+        "bedrock/",
+        "azure/",
+    ]
+    
+    stripped_model = model_lower
+    for prefix in prefixes_to_strip:
+        if stripped_model.startswith(prefix):
+            stripped_model = stripped_model[len(prefix):]
+            break
 
     # OpenAI model patterns
-    openai_patterns = ["gpt-", "o1-", "text-davinci", "text-curie", "text-babbage", "text-ada"]
-    if any(pattern in model_lower for pattern in openai_patterns):
+    openai_patterns = [
+        "gpt-", "o1-", "text-davinci", "text-curie", "text-babbage", "text-ada"
+    ]
+    if any(pattern in stripped_model for pattern in openai_patterns):
         return LLMProvider.OPENAI
 
     # Anthropic model patterns
     anthropic_patterns = ["claude-", "haiku", "sonnet", "opus"]
-    if any(pattern in model_lower for pattern in anthropic_patterns):
+    if any(pattern in stripped_model for pattern in anthropic_patterns):
         return LLMProvider.ANTHROPIC
 
     # Ollama model patterns - popular models available in Ollama
@@ -60,7 +81,7 @@ def _detect_provider_from_model(model_name: str) -> Optional[LLMProvider]:
         "alpaca",
         "devstral",
     ]
-    if any(pattern in model_lower for pattern in ollama_patterns):
+    if any(pattern in stripped_model for pattern in ollama_patterns):
         return LLMProvider.OLLAMA
 
     return None
@@ -249,6 +270,10 @@ class ReviewConfig:
                 "api_key": "sk-your_api_key_here",
                 "max_tokens": 4000,
                 "temperature": 0.1,
+                # For custom OpenAI compatible providers (e.g., Together AI, OpenRouter, etc.)
+                # "api_base_url": "https://api.together.xyz/v1",  # Example: Together AI
+                # "api_base_url": "https://openrouter.ai/api/v1",  # Example: OpenRouter
+                # "api_base_url": "http://localhost:8000/v1",      # Example: Local OpenAI API server
             },
             "review": {
                 "max_files": 50,
@@ -291,6 +316,44 @@ class ReviewConfig:
 #   api_base_url: "http://localhost:11434"  # Default Ollama endpoint
 #   api_key: "ollama"  # Placeholder (Ollama doesn't use API keys)
 #   max_tokens: 2000
+#   temperature: 0.1
+
+# Example OpenAI compatible provider configurations:
+# 
+# Together AI (https://together.ai/):
+# llm:
+#   provider: openai
+#   model: "meta-llama/Llama-3.3-70B-Instruct-Turbo"
+#   api_key: "your_together_api_key"
+#   api_base_url: "https://api.together.xyz/v1"
+#   max_tokens: 4000
+#   temperature: 0.1
+#
+# OpenRouter (https://openrouter.ai/):
+# llm:
+#   provider: openai
+#   model: "anthropic/claude-3.5-sonnet"
+#   api_key: "your_openrouter_api_key"
+#   api_base_url: "https://openrouter.ai/api/v1"
+#   max_tokens: 4000
+#   temperature: 0.1
+#
+# Local OpenAI API server (e.g., text-generation-webui, vLLM):
+# llm:
+#   provider: openai
+#   model: "local-model-name"
+#   api_key: "not-used"  # Local servers often don't require API keys
+#   api_base_url: "http://localhost:8000/v1"
+#   max_tokens: 4000
+#   temperature: 0.1
+#
+# Groq (https://groq.com/):
+# llm:
+#   provider: openai
+#   model: "llama-3.3-70b-versatile"
+#   api_key: "your_groq_api_key"
+#   api_base_url: "https://api.groq.com/openai/v1"
+#   max_tokens: 4000
 #   temperature: 0.1
 """
 

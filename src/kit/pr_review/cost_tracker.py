@@ -120,9 +120,12 @@ class CostTracker:
         self.breakdown.llm_input_tokens += input_tokens
         self.breakdown.llm_output_tokens += output_tokens
 
+        # Strip prefix from model name for pricing lookup
+        stripped_model = self._strip_model_prefix(model)
+
         # Get pricing for this provider/model
-        if provider in self.pricing and model in self.pricing[provider]:
-            pricing = self.pricing[provider][model]
+        if provider in self.pricing and stripped_model in self.pricing[provider]:
+            pricing = self.pricing[provider][stripped_model]
             input_cost = (input_tokens / 1_000_000) * pricing["input_per_million"]
             output_cost = (output_tokens / 1_000_000) * pricing["output_per_million"]
 
@@ -136,11 +139,12 @@ class CostTracker:
                 self.breakdown.llm_cost_usd += 0.00  # Fallback - still free
         else:
             # Unknown model - use a reasonable estimate and warn
-            print(f"⚠️  Unknown pricing for {provider.value}/{model}, using estimates")
+            print(f"⚠️  Unknown pricing for {provider.value}/{stripped_model}, using estimates")
             print("   Update pricing in ~/.kit/review-config.yaml or check current rates")
             self.breakdown.llm_cost_usd += (input_tokens / 1_000_000) * 3.0
             self.breakdown.llm_cost_usd += (output_tokens / 1_000_000) * 15.0
 
+        # Store the original model name with prefix for reference
         self.breakdown.model_used = model
         self._update_total()
 
@@ -191,26 +195,89 @@ class CostTracker:
         return sorted(all_models)
 
     @classmethod
+    def _strip_model_prefix(cls, model_name: str) -> str:
+        """Strip provider prefixes from model names.
+        
+        Examples:
+        - vertex_ai/claude-sonnet-4-20250514 -> claude-sonnet-4-20250514
+        - openrouter/meta-llama/llama-3.3-70b -> meta-llama/llama-3.3-70b
+        - gpt-4o -> gpt-4o (unchanged)
+        """
+        # Common prefixes to strip
+        prefixes_to_strip = [
+            "vertex_ai/",
+            "openrouter/", 
+            "together/",
+            "groq/",
+            "fireworks/",
+            "perplexity/",
+            "replicate/",
+            "bedrock/",
+            "azure/",
+        ]
+        
+        for prefix in prefixes_to_strip:
+            if model_name.startswith(prefix):
+                return model_name[len(prefix):]
+        
+        return model_name
+
+    @classmethod
     def is_valid_model(cls, model_name: str) -> bool:
-        """Check if a model name is valid/supported."""
-        return model_name in cls.get_all_model_names()
+        """Check if a model name is valid/supported.
+        
+        Supports prefixed model names like 'vertex_ai/claude-sonnet-4-20250514'.
+        """
+        # Try exact match first
+        if model_name in cls.get_all_model_names():
+            return True
+            
+        # Try with prefix stripped
+        stripped_model = cls._strip_model_prefix(model_name)
+        if stripped_model in cls.get_all_model_names():
+            return True
+            
+        # Special case for Ollama - any model is valid since it's local
+        if ":" in model_name and not model_name.startswith("http"):
+            # Looks like an Ollama model (e.g., "llama3:latest", "qwen2.5-coder:7b")
+            return True
+            
+        return False
 
     @classmethod
     def get_model_suggestions(cls, invalid_model: str) -> list[str]:
         """Get model suggestions for an invalid model name."""
         all_models = cls.get_all_model_names()
-        # Simple similarity matching - starts with same prefix or contains common parts
         suggestions = []
-
-        # Check for models that start similarly
-        lower_invalid = invalid_model.lower()
+        
+        # Strip prefix for comparison
+        stripped_invalid = cls._strip_model_prefix(invalid_model).lower()
+        
+        # Check for models that start similarly or contain common parts
         for model in all_models:
             lower_model = model.lower()
-            if lower_model.startswith(lower_invalid[:3]) or lower_invalid.startswith(lower_model[:3]):
+            # Check if models start similarly
+            starts_similar = (
+                lower_model.startswith(stripped_invalid[:4]) or 
+                stripped_invalid.startswith(lower_model[:4])
+            )
+            # Check if any significant parts match
+            parts_match = any(
+                part in lower_model 
+                for part in stripped_invalid.split('-')[:2] 
+                if len(part) > 2
+            )
+            
+            if starts_similar or parts_match:
                 suggestions.append(model)
 
         # If no good matches, return a few popular ones
         if not suggestions:
-            suggestions = ["gpt-4.1-nano", "gpt-4o-mini", "claude-3-5-sonnet-20241022"]
+            popular_models = [
+                "gpt-4.1-nano", 
+                "gpt-4o-mini", 
+                "claude-3-5-sonnet-20241022"
+            ]
+            suggestions = popular_models
 
         return suggestions[:5]  # Limit to 5 suggestions

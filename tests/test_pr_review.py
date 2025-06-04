@@ -254,6 +254,40 @@ def test_config_openai_provider():
         assert config.llm.model == "gpt-4o"
 
 
+def test_config_custom_openai_provider():
+    """Test custom OpenAI compatible provider configuration."""
+    import tempfile
+    import yaml
+
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+        config_data = {
+            "github": {"token": "github_token"},
+            "llm": {
+                "provider": "openai",
+                "model": "meta-llama/Llama-3.3-70B-Instruct-Turbo",
+                "api_key": "together_api_key",
+                "api_base_url": "https://api.together.xyz/v1",
+                "max_tokens": 4000,
+                "temperature": 0.1,
+            }
+        }
+        yaml.dump(config_data, f)
+        config_path = f.name
+
+    try:
+        config = ReviewConfig.from_file(config_path)
+        
+        assert config.llm.provider == LLMProvider.OPENAI
+        assert config.llm.api_key == "together_api_key"
+        assert config.llm.api_base_url == "https://api.together.xyz/v1"
+        assert config.llm.model == "meta-llama/Llama-3.3-70B-Instruct-Turbo"
+        assert config.llm.max_tokens == 4000
+        assert config.llm.temperature == 0.1
+    finally:
+        import os
+        os.unlink(config_path)
+
+
 def test_config_missing_tokens():
     """Test configuration error when tokens are missing."""
     with patch.dict(os.environ, {}, clear=True):
