@@ -427,6 +427,7 @@ def review_pr(
         "-m",
         help="Override LLM model (validated against supported models: e.g., gpt-4.1-nano, gpt-4.1, claude-sonnet-4-20250514)",
     ),
+    plain: bool = typer.Option(False, "--plain", "-p", help="Output raw review content for piping (no formatting)"),
     dry_run: bool = typer.Option(False, "--dry-run", "-n", help="Don't post comment, just show what would be posted"),
     agentic: bool = typer.Option(
         False, "--agentic", help="Use multi-turn agentic analysis (more thorough but expensive)"
@@ -444,6 +445,7 @@ def review_pr(
     EXAMPLES:
     kit review --init-config                                      # Setup
     kit review --dry-run https://github.com/owner/repo/pull/123   # Preview
+    kit review --plain https://github.com/owner/repo/pull/123     # Pipe-friendly
     kit review https://github.com/owner/repo/pull/123             # Standard
     kit review --model gpt-4.1-nano <pr-url>                      # Ultra budget
     kit review --model claude-opus-4-20250514 <pr-url>            # Premium
@@ -525,7 +527,8 @@ def review_pr(
                 typer.echo(f"🔄 Switched provider: {old_provider} → {detected_provider.value}")
 
             review_config.llm.model = model
-            typer.echo(f"🎛️  Overriding model to: {model}")
+            if not plain:  # Only show this message if not in plain mode
+                typer.echo(f"🎛️  Overriding model to: {model}")
 
         # Validate model exists
         from kit.pr_review.cost_tracker import CostTracker
@@ -546,23 +549,31 @@ def review_pr(
                     typer.echo(f"     ... and {len(models) - 5} more")
             raise typer.Exit(code=1)
 
-        # Override comment posting if dry run
-        if dry_run:
+        # Override comment posting if dry run or plain mode
+        if dry_run or plain:
             review_config.post_as_comment = False
-            typer.echo("🔍 Dry run mode - will not post comments")
+            if not plain:  # Only show this message if not in plain mode
+                typer.echo("🔍 Dry run mode - will not post comments")
+
+        # Set quiet mode for plain output
+        if plain:
+            # Set quiet mode to suppress all status output
+            review_config.quiet = True
 
         # Configure agentic settings if requested
         if agentic:
             review_config.agentic_max_turns = agentic_turns
-            print(f"🤖 Agentic mode configured - max turns: {agentic_turns}")
-            if agentic_turns <= 8:
-                print("💰 Expected cost: ~$0.36-0.80 (budget mode)")
-            elif agentic_turns <= 15:
-                print("💰 Expected cost: ~$0.80-1.50 (standard mode)")
-            else:
-                print("💰 Expected cost: ~$1.50-2.57 (extended mode)")
+            if not plain:  # Only show this message if not in plain mode
+                print(f"🤖 Agentic mode configured - max turns: {agentic_turns}")
+                if agentic_turns <= 8:
+                    print("💰 Expected cost: ~$0.36-0.80 (budget mode)")
+                elif agentic_turns <= 15:
+                    print("💰 Expected cost: ~$0.80-1.50 (standard mode)")
+                else:
+                    print("💰 Expected cost: ~$1.50-2.57 (extended mode)")
         else:
-            print("🛠️ Standard mode configured - repository intelligence enabled")
+            if not plain:  # Only show this message if not in plain mode
+                print("🛠️ Standard mode configured - repository intelligence enabled")
 
         # Create reviewer and run review
         if agentic:
@@ -574,13 +585,19 @@ def review_pr(
             standard_reviewer = PRReviewer(review_config)
             comment = standard_reviewer.review_pr(pr_url)
 
-        if dry_run:
+        # Handle output based on mode
+        if plain:
+            # Plain mode: just output the review content for piping
+            typer.echo(comment)
+        elif dry_run:
+            # Dry run mode: show formatted preview
             typer.echo("\n" + "=" * 60)
             typer.echo("REVIEW COMMENT THAT WOULD BE POSTED:")
             typer.echo("=" * 60)
             typer.echo(comment)
             typer.echo("=" * 60)
         else:
+            # Normal mode: post comment and show success
             typer.echo("✅ Review completed and comment posted!")
 
     except ValueError as e:

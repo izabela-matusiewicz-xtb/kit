@@ -32,7 +32,9 @@ class PRReviewer:
             }
         )
         self._llm_client: Optional[Any] = None  # Will be Anthropic or OpenAI client
-        self.repo_cache = RepoCache(config)
+        # Pass quiet mode to repo cache
+        quiet = self.config.quiet
+        self.repo_cache = RepoCache(config, quiet=quiet)
         self.cost_tracker = CostTracker(config.custom_pricing)
 
         # Diff caching (initialized to None, filled lazily)
@@ -383,30 +385,38 @@ class PRReviewer:
     def review_pr(self, pr_input: str) -> str:
         """Review a PR with intelligent analysis."""
         try:
+            # Check if quiet mode is enabled (for plain output)
+            quiet = self.config.quiet
+
             # Parse PR input
             owner, repo, pr_number = self.parse_pr_url(pr_input)
-            print(
-                f"🛠️ Reviewing PR #{pr_number} in {owner}/{repo} "
-                f"[STANDARD MODE - {self.config.llm.model} | max_tokens={self.config.llm.max_tokens}]"
-            )
+            if not quiet:
+                print(
+                    f"🛠️ Reviewing PR #{pr_number} in {owner}/{repo} "
+                    f"[STANDARD MODE - {self.config.llm.model} | max_tokens={self.config.llm.max_tokens}]"
+                )
 
             # Get PR details
             pr_details = self.get_pr_details(owner, repo, pr_number)
-            print(f"PR Title: {pr_details['title']}")
-            print(f"PR Author: {pr_details['user']['login']}")
-            print(f"Base: {pr_details['base']['ref']} -> Head: {pr_details['head']['ref']}")
+            if not quiet:
+                print(f"PR Title: {pr_details['title']}")
+                print(f"PR Author: {pr_details['user']['login']}")
+                print(f"Base: {pr_details['base']['ref']} -> Head: {pr_details['head']['ref']}")
 
             # Get changed files
             files = self.get_pr_files(owner, repo, pr_number)
-            print(f"Changed files: {len(files)}")
+            if not quiet:
+                print(f"Changed files: {len(files)}")
 
             # For more comprehensive analysis, clone the repo
             if len(files) > 0 and self.config.analysis_depth.value != "quick" and self.config.clone_for_analysis:
-                print("Cloning repository for analysis...")
+                if not quiet:
+                    print("Cloning repository for analysis...")
                 with tempfile.TemporaryDirectory():
                     try:
                         repo_path = self.get_repo_for_analysis(owner, repo, pr_details)
-                        print(f"Repository cloned to: {repo_path}")
+                        if not quiet:
+                            print(f"Repository cloned to: {repo_path}")
 
                         # Run async analysis
                         analysis = asyncio.run(self.analyze_pr_with_kit(repo_path, pr_details, files))
@@ -417,33 +427,37 @@ class PRReviewer:
                             changed_files = [f["filename"] for f in files]
                             validation = validate_review_quality(analysis, pr_diff, changed_files)
 
-                            print(f"📊 Review Quality Score: {validation.score:.2f}/1.0")
-                            if validation.issues:
-                                print(f"⚠️  Quality Issues: {', '.join(validation.issues)}")
-                            print(f"📈 Metrics: {validation.metrics}")
+                            if not quiet:
+                                print(f"📊 Review Quality Score: {validation.score:.2f}/1.0")
+                                if validation.issues:
+                                    print(f"⚠️  Quality Issues: {', '.join(validation.issues)}")
+                                print(f"📈 Metrics: {validation.metrics}")
 
                             # Auto-fix wrong line numbers if any
                             if validation.metrics.get("line_reference_errors", 0) > 0:
                                 from .line_ref_fixer import LineRefFixer
 
                                 analysis, fixes = LineRefFixer.fix_comment(analysis, pr_diff)
-                                if fixes:
+                                if fixes and not quiet:
                                     print(
                                         f"🔧 Auto-fixed {len(fixes) // (2 if any(f[1] != f[2] for f in fixes) else 1)} line reference(s)"
                                     )
 
                         except Exception as e:
-                            print(f"⚠️  Could not validate review quality: {e}")
+                            if not quiet:
+                                print(f"⚠️  Could not validate review quality: {e}")
 
                         review_comment = self._generate_intelligent_comment(pr_details, files, analysis)
 
                     except subprocess.CalledProcessError as e:
-                        print(f"Failed to clone repository: {e}")
+                        if not quiet:
+                            print(f"Failed to clone repository: {e}")
                         # Fall back to basic analysis without cloning
                         basic_analysis = f"Repository analysis failed (clone error). Reviewing based on GitHub API data only.\n\nFiles changed: {len(files)} files with {sum(f['additions'] for f in files)} additions and {sum(f['deletions'] for f in files)} deletions."
                         review_comment = self._generate_intelligent_comment(pr_details, files, basic_analysis)
                     except Exception as e:
-                        print(f"Analysis failed: {e}")
+                        if not quiet:
+                            print(f"Analysis failed: {e}")
                         # Fall back to basic analysis without cloning
                         basic_analysis = f"Analysis failed ({e!s}). Reviewing based on GitHub API data only.\n\nFiles changed: {len(files)} files with {sum(f['additions'] for f in files)} additions and {sum(f['deletions'] for f in files)} deletions."
                         review_comment = self._generate_intelligent_comment(pr_details, files, basic_analysis)
@@ -455,10 +469,12 @@ class PRReviewer:
             # Post comment if configured to do so
             if self.config.post_as_comment:
                 comment_result = self.post_pr_comment(owner, repo, pr_number, review_comment)
-                print(f"Posted comment: {comment_result['html_url']}")
+                if not quiet:
+                    print(f"Posted comment: {comment_result['html_url']}")
 
             # Display cost summary
-            print(self.cost_tracker.get_cost_summary())
+            if not quiet:
+                print(self.cost_tracker.get_cost_summary())
 
             return review_comment
 

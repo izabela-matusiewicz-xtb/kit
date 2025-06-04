@@ -32,10 +32,15 @@ export KIT_OPENAI_TOKEN="sk-openai-your_key"
 # 4. Review any GitHub PR
 kit review https://github.com/owner/repo/pull/123
 
-# 5. Test without posting (dry run)
+# 5. Test without posting (dry run with full formatting)
 kit review --dry-run https://github.com/owner/repo/pull/123
 
-# 6. Override model for specific review
+# 6. Get clean output for piping to other tools
+kit review --plain https://github.com/owner/repo/pull/123
+# Or use the short form:
+kit review -p https://github.com/owner/repo/pull/123
+
+# 7. Override model for specific review
 kit review --model gpt-4.1-nano https://github.com/owner/repo/pull/123
 ```
 
@@ -70,6 +75,76 @@ Based on testing against the same complex PR:
 
 <Aside type="note">
 **Local AI Trade-offs**: Requires initial setup and 4-8GB disk space per model. But once set up, you get professional-quality reviews with zero ongoing costs and complete privacy.
+</Aside>
+
+## 🔄 Output Modes & Piping
+
+Kit provides different output modes for various workflows:
+
+### Standard Mode
+```bash
+# Posts comment directly to GitHub PR
+kit review https://github.com/owner/repo/pull/123
+```
+
+### Dry Run Mode (`--dry-run` / `-n`)
+```bash
+# Shows formatted preview without posting
+kit review --dry-run https://github.com/owner/repo/pull/123
+```
+**Output includes**: Status messages, cost breakdown, quality metrics, and formatted review preview.
+
+### Plain Mode (`--plain` / `-p`) 
+```bash
+# Clean output perfect for piping to other tools
+kit review --plain https://github.com/owner/repo/pull/123
+kit review -p https://github.com/owner/repo/pull/123
+```
+**Output**: Just the raw review content with no status messages or formatting.
+
+### Piping to CLI Code Writers
+
+Combine kit's repository intelligence with your favorite CLI code-generation tooling:
+
+```bash
+# Analyze with kit, implement with Claude Code
+kit review -p https://github.com/owner/repo/pull/123 | \
+  claude -p "Implement all the suggestions from this code review"
+
+# Use specific models for cost optimization
+kit review -p --model gpt-4.1-nano https://github.com/owner/repo/pull/123 | \
+  claude -p "Fix the high-priority issues mentioned in this review"
+```
+
+### Integration Examples
+
+**Pipe to any tool:**
+```bash
+# Save review to file
+kit review -p <pr-url> > review.md
+
+# Send to Slack
+kit review -p <pr-url> | curl -X POST -H 'Content-type: application/json' \
+  --data '{"text":"'"$(cat)"'"}' YOUR_SLACK_WEBHOOK
+
+# Process with jq or other tools
+kit review -p <pr-url> | your-custom-processor
+```
+
+**Multi-stage workflows:**
+```bash
+# Stage 1: Kit analyzes codebase context  
+REVIEW=$(kit review -p --model claude-3-5-haiku-20241022 <pr-url>)
+
+# Stage 2: Claude Code implements fixes
+echo "$REVIEW" | claude -p "Implement these code review suggestions"
+
+# Stage 3: Your custom tooling
+echo "$REVIEW" | your-priority-tracker --extract-issues
+```
+
+<Aside type="tip">
+**Why this workflow rocks**: Kit excels at codebase understanding and context, while Claude Code excels at implementation. Combining them gives you AI-powered analysis → AI-powered fixes in seconds.
 </Aside>
 
 ## 💰 Transparent Pricing
@@ -287,6 +362,44 @@ jobs:
     GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 ```
 
+**Multi-Stage Analysis with Piping**:
+```yaml
+- name: AI Review with Implementation
+  run: |
+    pip install cased-kit
+    # Stage 1: Generate review with kit's repository intelligence
+    REVIEW=$(kit review -p --model claude-3-5-haiku-20241022 ${{ github.event.pull_request.html_url }})
+    
+    # Stage 2: Extract action items and post as separate comment
+    echo "$REVIEW" | your-issue-tracker --extract-priorities | \
+      gh pr comment ${{ github.event.pull_request.number }} --body-file -
+    
+    # Stage 3: Save review for later processing
+    echo "$REVIEW" > review-${{ github.event.pull_request.number }}.md
+    
+    # Stage 4: Send to team notification system
+    echo "$REVIEW" | your-slack-notifier --channel engineering
+  env:
+    GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    KIT_ANTHROPIC_TOKEN: ${{ secrets.ANTHROPIC_API_KEY }}
+```
+
+**Integration with External Tools**:
+```yaml
+- name: Review and Process
+  run: |
+    pip install cased-kit
+    # Get clean review output for processing
+    kit review -p ${{ github.event.pull_request.html_url }} > raw-review.txt
+    
+    # Parse with your custom tools
+    python scripts/extract-security-issues.py raw-review.txt
+    python scripts/update-team-dashboard.py raw-review.txt
+    
+    # Optional: Post processed results back to PR
+    gh pr comment ${{ github.event.pull_request.number }} --body-file processed-summary.md
+```
+
 **Conditional Reviews**:
 ```yaml
 # Only review non-draft PRs
@@ -359,6 +472,18 @@ Every review includes objective quality scoring:
 - Use the `--model` flag to override models per PR: `kit review --model gpt-4.1-nano <pr-url>`
 - Leverage caching - repeat reviews of same repo are 5-10x faster
 - Set up profiles to avoid redundant context
+
+### Output Mode Selection
+- **Standard mode**: For direct GitHub integration and team collaboration
+- **Dry run (`--dry-run`)**: For testing configurations and seeing full diagnostics
+- **Plain mode (`--plain` / `-p`)**: For piping to CLI code composers, custom tools, or automation
+- **Tip**: Use plain mode in CI/CD for processing reviews with external systems
+
+### Piping & Integration Workflows
+- **Kit → Claude Code**: `kit review -p <pr-url> | claude "implement these suggestions"`
+- **Multi-tool chains**: Use kit for analysis, pipe to specialized tools for processing
+- **Cost optimization**: Use budget models for analysis, premium models for implementation
+- **Automation**: Pipe plain output to issue trackers, notification systems, or custom processors
 
 ### Team Adoption
 - **Start with free local AI** to build confidence without costs

@@ -461,8 +461,10 @@ kit review <pr-url> [OPTIONS]
 ```
 
 **Options:**
-- `--dry-run`: Generate review without posting to GitHub
-- `--config <file>`: Use custom configuration file
+- `--plain, -p`: Output raw review content for piping (no formatting)
+- `--dry-run, -n`: Generate review without posting to GitHub (shows formatted preview)
+- `--model, -m <model>`: Override LLM model for this review
+- `--config, -c <file>`: Use custom configuration file
 - `--init-config`: Create default configuration file
 - `--agentic`: Use multi-turn agentic analysis (higher cost, deeper analysis)
 - `--agentic-turns <count>`: Number of analysis turns for agentic mode
@@ -473,8 +475,20 @@ kit review <pr-url> [OPTIONS]
 # Review and post comment
 kit review https://github.com/owner/repo/pull/123
 
-# Dry run (generate review without posting)
+# Dry run (formatted preview without posting)
 kit review --dry-run https://github.com/owner/repo/pull/123
+
+# Clean output for piping to other tools
+kit review --plain https://github.com/owner/repo/pull/123
+kit review -p https://github.com/owner/repo/pull/123
+
+# Override model for specific review
+kit review --model gpt-4.1-nano https://github.com/owner/repo/pull/123
+kit review -m claude-3-5-haiku-20241022 https://github.com/owner/repo/pull/123
+
+# Pipe to Claude Code for implementation
+kit review -p https://github.com/owner/repo/pull/123 | \
+  claude "Implement these code review suggestions"
 
 # Use agentic mode for complex PRs
 kit review --agentic --agentic-turns 15 https://github.com/owner/repo/pull/123
