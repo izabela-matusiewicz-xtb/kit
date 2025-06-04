@@ -224,6 +224,8 @@ interpreter your MCP client is using is the correct one.
 Explore the **[Full Documentation](https://kit.cased.com)** for detailed usage, advanced features, and practical examples.
 Full REST documentation is also available.
 
+📝 **[Changelog](https://kit.cased.com/changelog)** - Track all changes and improvements across kit releases
+
 
 ## License
 
