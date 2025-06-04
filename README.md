@@ -94,20 +94,12 @@ The CLI supports all major repository operations with Unix-friendly output for s
 
 As both of a demonstration of this library, and as a standalone product,
 `kit` includes a MIT-licensed, CLI-based pull request reviewer that
-ranks with the better closed-source paid options—but **completely free** 
-with local Ollama models, or at a fraction of the cost with cloud models.
-
-**🆓 Free option**: Use local Ollama models (qwen2.5-coder, codellama, etc.)
-**💰 Low-cost option**: Use Claude or GPT-4 at cost (~10 cents per review)
+ranks with the better closed-source paid options, but at 
+a fraction of the cost with cloud models. At Cased we use `kit` extensively
+with models like Sonnet 4 and gpt4.1, paying just for the price of tokens.
 
 ```bash
-# Option 1: Free with Ollama (install ollama.ai first)
-ollama pull qwen2.5-coder:latest
-kit review --init-config  # Select ollama provider
-kit review https://github.com/owner/repo/pull/123
-
-# Option 2: Cloud models (Claude or GPT-4) 
-kit review --init-config  # Select anthropic or openai provider
+kit review --init-config
 kit review https://github.com/owner/repo/pull/123
 ```
 
@@ -118,40 +110,10 @@ kit review https://github.com/owner/repo/pull/123
 - **Fast**: No queuing, shared services: just your code and the LLM
 - **Works from wherever**: Trigger reviews with the CLI, or run it via CI
 
+`kit` also has first-class support for **free local models** via [Ollama](https://ollama.ai/). 
+No API keys, no costs, no data leaving your machine.
+
 **📖 [Complete PR Reviewer Documentation](src/kit/pr_review/README.md)**
-
-## 🆓 Local AI Models (No Cost)
-
-`kit` has first-class support for **free local AI models** via [Ollama](https://ollama.ai/). No API keys, no costs, no data leaving your machine.
-
-```python
-from kit import Repository
-from kit.summaries import OllamaConfig
-
-# Use any Ollama model for local code intelligence
-repo = Repository("/path/to/your/codebase")
-config = OllamaConfig(model="qwen2.5-coder:latest")  # Latest code-specialized model
-summarizer = repo.get_summarizer(config=config)
-
-# Summarize code locally
-summary = summarizer.summarize_file("main.py")
-print(summary)  # Cost: $0.00
-```
-
-**Why Choose Ollama:**
-- ✅ **No cost** - unlimited usage
-- ✅ **Complete privacy** - data never leaves your machine  
-- ✅ **No API keys** - just install and run
-- ✅ **Works offline** - perfect for secure environments
-
-**Quick Setup:**
-```bash
-curl -fsSL https://ollama.ai/install.sh | sh
-ollama pull qwen2.5-coder:latest  # Best for code
-```
-
-**📚 [Complete Ollama Guide →](https://kit.cased.com/introduction/ollama)**  
-*Latest models, advanced examples, troubleshooting, and more*
 
 ## Key Features & Capabilities
 

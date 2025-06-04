@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 from kit.tree_sitter_symbol_extractor import TreeSitterSymbolExtractor
 
@@ -30,19 +30,20 @@ class TestSymbolTypeProcessing:
         mock_parser.parse.return_value = mock_tree
         mock_tree.root_node = mock_root
 
-        # Mock the class methods
-        TreeSitterSymbolExtractor.get_query = MagicMock(return_value=mock_query)
-        TreeSitterSymbolExtractor.get_parser = MagicMock(return_value=mock_parser)
-
         source_code = "def testFunction():\n    pass"
 
-        # Call the method
-        symbols = TreeSitterSymbolExtractor.extract_symbols(".py", source_code)
+        # Use patch to avoid global mocking pollution
+        with (
+            patch.object(TreeSitterSymbolExtractor, "get_query", return_value=mock_query),
+            patch.object(TreeSitterSymbolExtractor, "get_parser", return_value=mock_parser),
+        ):
+            # Call the method
+            symbols = TreeSitterSymbolExtractor.extract_symbols(".py", source_code)
 
-        # Verify the result
-        assert len(symbols) == 1
-        assert symbols[0]["type"] == "function"  # Should be "function", not "unction"
-        assert symbols[0]["name"] == "testFunction"
+            # Verify the result
+            assert len(symbols) == 1
+            assert symbols[0]["type"] == "function"  # Should be "function", not "unction"
+            assert symbols[0]["name"] == "testFunction"
 
     def test_symbol_type_from_fallback_label_class(self):
         """Test that @class correctly becomes 'class'."""
@@ -66,16 +67,17 @@ class TestSymbolTypeProcessing:
         mock_parser.parse.return_value = mock_tree
         mock_tree.root_node = mock_root
 
-        TreeSitterSymbolExtractor.get_query = MagicMock(return_value=mock_query)
-        TreeSitterSymbolExtractor.get_parser = MagicMock(return_value=mock_parser)
-
         source_code = "class TestClass:\n    pass"
 
-        symbols = TreeSitterSymbolExtractor.extract_symbols(".py", source_code)
+        with (
+            patch.object(TreeSitterSymbolExtractor, "get_query", return_value=mock_query),
+            patch.object(TreeSitterSymbolExtractor, "get_parser", return_value=mock_parser),
+        ):
+            symbols = TreeSitterSymbolExtractor.extract_symbols(".py", source_code)
 
-        assert len(symbols) == 1
-        assert symbols[0]["type"] == "class"
-        assert symbols[0]["name"] == "TestClass"
+            assert len(symbols) == 1
+            assert symbols[0]["type"] == "class"
+            assert symbols[0]["name"] == "TestClass"
 
     def test_symbol_type_from_definition_capture(self):
         """Test that definition.function correctly becomes 'function'."""
@@ -103,16 +105,17 @@ class TestSymbolTypeProcessing:
         mock_parser.parse.return_value = mock_tree
         mock_tree.root_node = mock_root
 
-        TreeSitterSymbolExtractor.get_query = MagicMock(return_value=mock_query)
-        TreeSitterSymbolExtractor.get_parser = MagicMock(return_value=mock_parser)
-
         source_code = "def myFunction():\n    return 42"
 
-        symbols = TreeSitterSymbolExtractor.extract_symbols(".py", source_code)
+        with (
+            patch.object(TreeSitterSymbolExtractor, "get_query", return_value=mock_query),
+            patch.object(TreeSitterSymbolExtractor, "get_parser", return_value=mock_parser),
+        ):
+            symbols = TreeSitterSymbolExtractor.extract_symbols(".py", source_code)
 
-        assert len(symbols) == 1
-        assert symbols[0]["type"] == "function"  # Should correctly extract "function" from "definition.function"
-        assert symbols[0]["name"] == "myFunction"
+            assert len(symbols) == 1
+            assert symbols[0]["type"] == "function"  # Should correctly extract "function" from "definition.function"
+            assert symbols[0]["name"] == "myFunction"
 
     def test_removeprefix_behavior_verification(self):
         """Test that our fix correctly handles the prefix removal."""

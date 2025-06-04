@@ -48,25 +48,6 @@ kit review --model gpt-4.1-nano https://github.com/owner/repo/pull/123
 **Just want the PR reviewer?** The base `pip install cased-kit` gives you everything needed for PR reviews without heavy ML dependencies like PyTorch. If you need semantic search features later, install with `pip install cased-kit[ml]`.
 </Aside>
 
-## 🆓 Free Local AI with Ollama
-
-**Zero-cost PR reviews** using state-of-the-art local models. 
-Perfect for teams who want professional code analysis at zero cost and without sending code to external APIs.
-
-```bash
-# 1. Install Ollama (one-time setup)
-curl -fsSL https://ollama.ai/install.sh | sh
-
-# 2. Pull a model, take your pick!
-ollama pull qwen2.5-coder:latest
-
-# 3. Configure kit for Ollama
-export KIT_GITHUB_TOKEN="ghp_your_token"  # Still need GitHub API access
-
-# 4. Review with free local AI
-kit review --model qwen2.5-coder:latest https://github.com/owner/repo/pull/123
-```
-
 ### Real-World Performance
 Based on testing against the same complex PR:
 - **Speed**: 39-56 seconds (competitive with cloud APIs)
@@ -172,6 +153,25 @@ Don't underestimate the smaller models.
 gpt-4.1-mini (or even nano!) delivers surprisingly useful reviews *when given the right context via kit*. For simple projects, you can get decent AI code reviews for **less than $1/month**.
 Here's an example [against kit itself](https://github.com/cased/kit/pull/56#issuecomment-2928399599). This review cost *half a cent*.
 </Aside>
+
+### Free Local AI with Ollama
+
+**Zero-cost PR reviews** using state-of-the-art local models. 
+Perfect for teams who want professional code analysis at zero cost and without sending code to external APIs.
+
+```bash
+# 1. Install Ollama (one-time setup)
+curl -fsSL https://ollama.ai/install.sh | sh
+
+# 2. Pull a model, take your pick!
+ollama pull qwen2.5-coder:latest
+
+# 3. Configure kit for Ollama
+export KIT_GITHUB_TOKEN="ghp_your_token"  # Still need GitHub API access
+
+# 4. Review with free local AI
+kit review --model qwen2.5-coder:latest https://github.com/owner/repo/pull/123
+```
 
 ## 🎯 Key Features
 
