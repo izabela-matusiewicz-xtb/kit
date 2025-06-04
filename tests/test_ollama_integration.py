@@ -1,12 +1,28 @@
 """Tests for Ollama integration."""
 
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
 from kit.pr_review.config import GitHubConfig, LLMConfig, LLMProvider, ReviewConfig
 from kit.pr_review.cost_tracker import CostTracker
-from kit.summaries import LLMError, OllamaConfig, Summarizer
+from kit.summaries import LLMError, OllamaConfig, Summarizer, _strip_thinking_tokens
+
+# --- Fixtures ---
+
+
+@pytest.fixture
+def mock_repo():
+    """Provides a MagicMock instance of the Repository with required methods."""
+    repo = MagicMock()  # Do not enforce spec to allow arbitrary attributes
+    repo.get_abs_path = MagicMock(side_effect=lambda x: f"/abs/path/to/{x}")  # Mock get_abs_path
+    repo.get_symbol_text = MagicMock()
+    repo.get_file_content = MagicMock()  # Mock get_file_content
+    repo.extract_symbols = MagicMock()  # Mock extract_symbols
+    return repo
+
+
+# --- Integration Tests ---
 
 
 class TestOllamaConfig:
@@ -50,17 +66,6 @@ class TestOllamaConfig:
 
 class TestOllamaSummarizer:
     """Test Ollama integration with Summarizer."""
-
-    @pytest.fixture
-    def mock_repo(self):
-        """Mock repository for testing."""
-        repo = Mock()
-        repo.get_abs_path.return_value = "/abs/path/to/test_file.py"
-        repo.get_file_content.return_value = "def hello():\n    print('Hello, World!')"
-        repo.extract_symbols.return_value = [
-            {"name": "hello", "type": "FUNCTION", "code": "def hello():\n    print('Hello, World!')"}
-        ]
-        return repo
 
     @patch("requests.Session")
     def test_ollama_summarizer_initialization(self, mock_session, mock_repo):
@@ -288,6 +293,178 @@ class TestOllamaConfigValidation:
         for model_name, expected_provider in test_cases:
             result = _detect_provider_from_model(model_name)
             assert result == expected_provider, f"Model {model_name} should detect as {expected_provider}, got {result}"
+
+
+class TestOllamaThinkingTokenIntegration:
+    """Integration tests for thinking token stripping with Ollama models."""
+
+    @patch("requests.Session")
+    def test_ollama_deepseek_r1_thinking_token_stripping(self, mock_session_class, mock_repo):
+        """Test that DeepSeek R1 thinking tokens are stripped in Ollama responses."""
+
+        # Mock the requests session
+        mock_session = Mock()
+        mock_session_class.return_value = mock_session
+
+        # Mock a DeepSeek R1 response with thinking tokens
+        mock_response = Mock()
+        mock_response.json.return_value = {
+            "response": """<think>
+I need to analyze this Python file carefully. Let me look at the structure:
+1. It's a simple function definition
+2. It takes parameters and returns something
+3. I should summarize its purpose clearly
+</think>
+
+This Python file contains a utility function called `process_data` that takes a list of items and returns the processed results. The function validates input data, applies transformations, and handles errors gracefully.
+
+<think>
+Actually, let me be more specific about what the function does...
+</think>
+
+Key features:
+- Input validation with type checking
+- Data transformation using list comprehensions
+- Error handling for edge cases
+- Returns processed list or raises appropriate exceptions"""
+        }
+        mock_response.raise_for_status.return_value = None
+        mock_session.post.return_value = mock_response
+
+        # Mock repo to return some file content
+        mock_repo.get_abs_path.return_value = "/path/to/file.py"
+        mock_repo.get_file_content.return_value = (
+            "def process_data(items):\n    return [item.upper() for item in items]"
+        )
+
+        # Create Ollama config for DeepSeek R1
+        config = OllamaConfig(model="deepseek-r1:latest", base_url="http://localhost:11434", temperature=0.2)
+
+        with patch("requests.Session", return_value=mock_session):
+            summarizer = Summarizer(repo=mock_repo, config=config)
+
+            result = summarizer.summarize_file("test_file.py")
+
+            # Verify thinking tokens were stripped from the final result
+            assert "<think>" not in result
+            assert "</think>" not in result
+            assert "I need to analyze this Python file carefully" not in result
+            assert "Actually, let me be more specific" not in result
+
+            # Verify the actual content is preserved
+            assert "This Python file contains a utility function" in result
+            assert "Key features:" in result
+            assert "Input validation with type checking" in result
+            assert "Error handling for edge cases" in result
+
+    def test_thinking_token_stripping_preserves_clean_responses(self):
+        """Test that responses without thinking tokens are preserved unchanged."""
+
+        clean_response = """This is a clean code summary without any thinking tokens.
+
+The function implements a simple algorithm that:
+- Processes input data
+- Validates parameters
+- Returns formatted results
+
+No internal reasoning tokens are present in this response."""
+
+        result = _strip_thinking_tokens(clean_response)
+        assert result == clean_response
+
+    def test_multiple_reasoning_patterns_stripped(self):
+        """Test that various reasoning model patterns are all stripped correctly."""
+
+        mixed_response = """<thinking>
+Let me analyze this code structure first...
+</thinking>
+
+This is a comprehensive code review.
+
+<think>But wait, I should check for security issues too...</think>
+
+## Issues Found
+
+<reason>The validation logic seems weak because...</reason>
+
+1. Missing input validation
+2. Potential XSS vulnerabilities
+
+<thought>I should mention the performance implications as well</thought>
+
+## Recommendations
+
+Implement proper input sanitization and validation."""
+
+        expected = """This is a comprehensive code review.
+
+## Issues Found
+
+1. Missing input validation
+2. Potential XSS vulnerabilities
+
+## Recommendations
+
+Implement proper input sanitization and validation."""
+
+        result = _strip_thinking_tokens(mixed_response)
+        assert result == expected
+
+    @patch("requests.Session")
+    def test_pr_review_thinking_token_stripping_integration(self, mock_session_class, mock_repo):
+        """Test thinking token stripping in PR review context with Ollama."""
+
+        # This test would require more complex mocking of the PR review system
+        # For now, we'll test the core stripping functionality
+
+        pr_review_response = """<think>
+This PR changes the authentication system. I need to look for:
+- Security vulnerabilities
+- Breaking changes
+- Code quality issues
+Let me analyze each file...
+</think>
+
+## Priority Issues
+
+- **High**: Missing CSRF protection in auth endpoints
+- **Medium**: Deprecated password hashing method
+
+<think>
+I should also check if there are any database migration issues...
+The schema changes look safe though.
+</think>
+
+## Summary
+
+This PR introduces OAuth 2.0 authentication but has security concerns.
+
+## Recommendations
+
+1. Add CSRF tokens to all forms
+2. Upgrade to bcrypt for password hashing
+3. Add rate limiting to login endpoints"""
+
+        expected = """## Priority Issues
+
+- **High**: Missing CSRF protection in auth endpoints
+- **Medium**: Deprecated password hashing method
+
+## Summary
+
+This PR introduces OAuth 2.0 authentication but has security concerns.
+
+## Recommendations
+
+1. Add CSRF tokens to all forms
+2. Upgrade to bcrypt for password hashing
+3. Add rate limiting to login endpoints"""
+
+        # Import the PR reviewer's strip function to test it too
+        from kit.pr_review.reviewer import _strip_thinking_tokens as pr_strip_thinking_tokens
+
+        result = pr_strip_thinking_tokens(pr_review_response)
+        assert result == expected
 
 
 if __name__ == "__main__":

@@ -706,3 +706,217 @@ def test_summarize_class_google(mock_google_client_constructor, mock_repo):
 
 
 # --- Test Helper for Mocking Summarizer ---
+
+
+# --- Test Thinking Token Stripping ---
+
+
+class TestThinkingTokenStripping:
+    """Tests for the _strip_thinking_tokens function."""
+
+    def test_strip_simple_think_tags(self):
+        """Test stripping simple <think> tags."""
+        from kit.summaries import _strip_thinking_tokens
+
+        response = "<think>This is internal reasoning</think>\n\nThis is the actual response."
+        expected = "This is the actual response."
+        result = _strip_thinking_tokens(response)
+        assert result == expected
+
+    def test_strip_thinking_tags(self):
+        """Test stripping <thinking> tags."""
+        from kit.summaries import _strip_thinking_tokens
+
+        response = "<thinking>\nLet me analyze this...\nActually, I think...\n</thinking>\n\nHere's my analysis."
+        expected = "Here's my analysis."
+        result = _strip_thinking_tokens(response)
+        assert result == expected
+
+    def test_strip_thought_tags(self):
+        """Test stripping <thought> tags."""
+        from kit.summaries import _strip_thinking_tokens
+
+        response = "<thought>Internal thoughts here</thought>\n\nFinal answer."
+        expected = "Final answer."
+        result = _strip_thinking_tokens(response)
+        assert result == expected
+
+    def test_strip_reason_tags(self):
+        """Test stripping <reason> tags."""
+        from kit.summaries import _strip_thinking_tokens
+
+        response = "<reason>Because X leads to Y</reason>\n\nTherefore, the solution is Z."
+        expected = "Therefore, the solution is Z."
+        result = _strip_thinking_tokens(response)
+        assert result == expected
+
+    def test_strip_multiple_patterns(self):
+        """Test stripping multiple different thinking token patterns."""
+        from kit.summaries import _strip_thinking_tokens
+
+        response = """<thinking>
+First, let me think about this...
+</thinking>
+
+Here's my initial analysis.
+
+<think>Wait, I need to reconsider...</think>
+
+Actually, the correct approach is:
+
+<reason>The logic should be X because Y</reason>
+
+Final recommendation."""
+
+        expected = "Here's my initial analysis.\n\nActually, the correct approach is:\n\nFinal recommendation."
+        result = _strip_thinking_tokens(response)
+        assert result == expected
+
+    def test_case_insensitive_stripping(self):
+        """Test that thinking token stripping is case insensitive."""
+        from kit.summaries import _strip_thinking_tokens
+
+        response = "<THINK>Upper case thinking</THINK>\n\n<Think>Mixed case</Think>\n\nActual content."
+        expected = "Actual content."
+        result = _strip_thinking_tokens(response)
+        assert result == expected
+
+    def test_no_thinking_tokens(self):
+        """Test that text without thinking tokens is unchanged."""
+        from kit.summaries import _strip_thinking_tokens
+
+        response = "This is a normal response with no thinking tokens."
+        result = _strip_thinking_tokens(response)
+        assert result == response
+
+    def test_empty_input(self):
+        """Test handling of empty input."""
+        from kit.summaries import _strip_thinking_tokens
+
+        assert _strip_thinking_tokens("") == ""
+        assert _strip_thinking_tokens(None) is None
+
+    def test_only_thinking_tokens(self):
+        """Test input that contains only thinking tokens."""
+        from kit.summaries import _strip_thinking_tokens
+
+        response = "<think>Only internal thoughts here</think>"
+        result = _strip_thinking_tokens(response)
+        assert result == ""
+
+    def test_nested_content_preservation(self):
+        """Test that thinking tokens with nested content are fully removed."""
+        from kit.summaries import _strip_thinking_tokens
+
+        response = """<thinking>
+I need to consider:
+1. Option A because of X
+2. Option B because of Y
+3. Option C because of Z
+
+Let me weigh the pros and cons...
+Actually, option B seems best.
+</thinking>
+
+Based on my analysis, I recommend option B."""
+
+        expected = "Based on my analysis, I recommend option B."
+        result = _strip_thinking_tokens(response)
+        assert result == expected
+
+    def test_malformed_tags_ignored(self):
+        """Test that malformed tags are not stripped."""
+        from kit.summaries import _strip_thinking_tokens
+
+        response = "<think>Valid thinking</think>\n\n<think unclosed tag\n\nSome content with <think but not closed."
+        # Only the properly formed tag should be removed
+        expected = "<think unclosed tag\n\nSome content with <think but not closed."
+        result = _strip_thinking_tokens(response)
+        assert result == expected
+
+    def test_multiple_blank_lines_cleanup(self):
+        """Test that multiple blank lines left by tag removal are cleaned up."""
+        from kit.summaries import _strip_thinking_tokens
+
+        response = """First paragraph.
+
+<think>Internal reasoning</think>
+
+
+
+<thinking>More thinking</thinking>
+
+
+
+
+Second paragraph."""
+
+        expected = "First paragraph.\n\nSecond paragraph."
+        result = _strip_thinking_tokens(response)
+        assert result == expected
+
+    def test_deepseek_r1_style_response(self):
+        """Test a realistic DeepSeek R1 style response with thinking tokens."""
+        from kit.summaries import _strip_thinking_tokens
+
+        response = """<think>
+The user is asking about code review. I need to analyze:
+1. The function structure
+2. Error handling
+3. Performance implications
+4. Security considerations
+
+Let me think through each aspect...
+</think>
+
+## Code Review
+
+The function has several issues that need attention:
+
+<think>
+Actually, let me be more specific about the error handling issue...
+</think>
+
+### Issues Found
+
+1. **Missing Error Handling**: The function doesn't handle edge cases properly
+2. **Performance**: The nested loops could be optimized
+
+### Recommendations
+
+- Add try-catch blocks around risky operations
+- Consider using a more efficient algorithm"""
+
+        expected = """## Code Review
+
+The function has several issues that need attention:
+
+### Issues Found
+
+1. **Missing Error Handling**: The function doesn't handle edge cases properly
+2. **Performance**: The nested loops could be optimized
+
+### Recommendations
+
+- Add try-catch blocks around risky operations
+- Consider using a more efficient algorithm"""
+
+        result = _strip_thinking_tokens(response)
+        assert result == expected
+
+    def test_whitespace_only_after_stripping(self):
+        """Test handling when only whitespace remains after stripping."""
+        from kit.summaries import _strip_thinking_tokens
+
+        response = "   <think>Only thinking content</think>   \n\n  "
+        result = _strip_thinking_tokens(response)
+        assert result == ""
+
+    def test_thinking_tokens_at_boundaries(self):
+        """Test thinking tokens at the start and end of content."""
+        from kit.summaries import _strip_thinking_tokens
+
+        response = "<think>Start thinking</think>Middle content<think>End thinking</think>"
+        expected = "Middle content"
+        result = _strip_thinking_tokens(response)
+        assert result == expected

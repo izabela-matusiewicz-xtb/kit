@@ -564,3 +564,108 @@ def test_cli_model_validation():
         assert "Invalid model: invalid-model-name" in result.output
         assert "Did you mean one of these?" in result.output
         assert "All available models:" in result.output
+
+
+# --- Test Thinking Token Stripping in PR Reviewer ---
+
+
+class TestPRReviewerThinkingTokenStripping:
+    """Tests for the _strip_thinking_tokens function in PR reviewer."""
+
+    def test_strip_thinking_tokens_in_pr_reviewer(self):
+        """Test that PR reviewer's thinking token stripping works correctly."""
+        from kit.pr_review.reviewer import _strip_thinking_tokens
+
+        response = """<think>
+I need to analyze this PR carefully...
+Let me look at the changes...
+</think>
+
+## Priority Issues
+
+- **High priority**: Missing error handling in auth.py:42
+- **Medium priority**: Potential performance issue in utils.py:15
+
+<think>
+Actually, let me double-check that line number...
+Yes, that's correct.
+</think>
+
+## Summary
+
+This PR introduces authentication features but needs some improvements.
+
+## Recommendations
+
+- Add proper error handling
+- Consider edge cases"""
+
+        expected = """## Priority Issues
+
+- **High priority**: Missing error handling in auth.py:42
+- **Medium priority**: Potential performance issue in utils.py:15
+
+## Summary
+
+This PR introduces authentication features but needs some improvements.
+
+## Recommendations
+
+- Add proper error handling
+- Consider edge cases"""
+
+        result = _strip_thinking_tokens(response)
+        assert result == expected
+
+    def test_pr_reviewer_multiple_thinking_patterns(self):
+        """Test PR reviewer handles multiple thinking token patterns."""
+        from kit.pr_review.reviewer import _strip_thinking_tokens
+
+        response = """<thinking>Let me review this code...</thinking>
+
+The main changes are:
+
+<think>I should focus on security issues</think>
+
+1. Authentication logic changes
+2. Database schema updates
+
+<reason>These changes affect core security</reason>
+
+Overall assessment: Needs review."""
+
+        expected = """The main changes are:
+
+1. Authentication logic changes
+2. Database schema updates
+
+Overall assessment: Needs review."""
+
+        result = _strip_thinking_tokens(response)
+        assert result == expected
+
+    def test_pr_reviewer_empty_input(self):
+        """Test PR reviewer handles empty input correctly."""
+        from kit.pr_review.reviewer import _strip_thinking_tokens
+
+        assert _strip_thinking_tokens("") == ""
+        assert _strip_thinking_tokens(None) is None
+
+    def test_pr_reviewer_no_thinking_tokens(self):
+        """Test PR reviewer preserves content without thinking tokens."""
+        from kit.pr_review.reviewer import _strip_thinking_tokens
+
+        response = """## Code Review
+
+This is a clean review comment with no thinking tokens.
+
+### Issues
+- Issue 1
+- Issue 2
+
+### Recommendations
+- Fix issue 1
+- Address issue 2"""
+
+        result = _strip_thinking_tokens(response)
+        assert result == response
