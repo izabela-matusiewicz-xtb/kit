@@ -109,11 +109,11 @@ Combine kit's repository intelligence with your favorite CLI code-generation too
 ```bash
 # Analyze with kit, implement with Claude Code
 kit review -p https://github.com/owner/repo/pull/123 | \
-  claude "Implement all the suggestions from this code review"
+  claude -p "Implement all the suggestions from this code review"
 
 # Use specific models for cost optimization
 kit review -p --model gpt-4.1-nano https://github.com/owner/repo/pull/123 | \
-  claude "Fix the high-priority issues mentioned in this review"
+  claude -p "Fix the high-priority issues mentioned in this review"
 ```
 
 ### Integration Examples
@@ -137,7 +137,7 @@ kit review -p <pr-url> | your-custom-processor
 REVIEW=$(kit review -p --model claude-3-5-haiku-20241022 <pr-url>)
 
 # Stage 2: Claude Code implements fixes
-echo "$REVIEW" | claude "Implement these code review suggestions"
+echo "$REVIEW" | claude -p "Implement these code review suggestions"
 
 # Stage 3: Your custom tooling
 echo "$REVIEW" | your-priority-tracker --extract-issues
