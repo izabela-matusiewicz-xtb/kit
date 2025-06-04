@@ -33,7 +33,7 @@ class PRReviewer:
         )
         self._llm_client: Optional[Any] = None  # Will be Anthropic or OpenAI client
         # Pass quiet mode to repo cache
-        quiet = getattr(config, "quiet", False)
+        quiet = self.config.quiet
         self.repo_cache = RepoCache(config, quiet=quiet)
         self.cost_tracker = CostTracker(config.custom_pricing)
 
@@ -386,7 +386,7 @@ class PRReviewer:
         """Review a PR with intelligent analysis."""
         try:
             # Check if quiet mode is enabled (for plain output)
-            quiet = getattr(self.config, "quiet", False)
+            quiet = self.config.quiet
 
             # Parse PR input
             owner, repo, pr_number = self.parse_pr_url(pr_input)

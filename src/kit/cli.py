@@ -557,8 +557,8 @@ def review_pr(
 
         # Set quiet mode for plain output
         if plain:
-            # Add a quiet attribute to suppress all status output
-            setattr(review_config, "quiet", True)
+            # Set quiet mode to suppress all status output
+            review_config.quiet = True
 
         # Configure agentic settings if requested
         if agentic:

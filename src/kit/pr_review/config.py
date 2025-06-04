@@ -124,6 +124,8 @@ class ReviewConfig:
     # Agentic reviewer settings
     agentic_max_turns: int = 20
     agentic_finalize_threshold: int = 15  # Start encouraging finalization at this turn
+    # Output control
+    quiet: bool = False  # Suppress status output for plain mode
 
     @classmethod
     def from_file(cls, config_path: Optional[str] = None) -> "ReviewConfig":
@@ -228,6 +230,7 @@ class ReviewConfig:
             custom_pricing=review_data.get("custom_pricing", None),
             agentic_max_turns=review_data.get("agentic_max_turns", 20),
             agentic_finalize_threshold=review_data.get("agentic_finalize_threshold", 15),
+            quiet=review_data.get("quiet", False),
         )
 
     def create_default_config_file(self, config_path: Optional[str] = None) -> str:
