@@ -338,9 +338,9 @@ class PRReviewer:
                 response
             )
             self.cost_tracker.track_llm_usage(
-                self.config.llm.provider, 
-                self.config.llm.model, 
-                input_tokens, 
+                self.config.llm.provider,
+                self.config.llm.model,
+                input_tokens,
                 output_tokens
             )
 

@@ -6,6 +6,7 @@ from pathlib import Path
 from unittest.mock import Mock, patch
 
 import pytest
+import yaml
 
 from kit.pr_review.config import (
     GitHubConfig,
@@ -19,7 +20,6 @@ from kit.pr_review.validator import (
     ValidationResult,
     validate_review_quality,
 )
-import yaml
 
 
 def test_pr_url_parsing():
@@ -142,7 +142,7 @@ def test_model_prefix_detection():
     assert CostTracker._strip_model_prefix(
         "openrouter/meta-llama/llama-3.1-8b-instruct"
     ) == "meta-llama/llama-3.1-8b-instruct"
-    
+
     assert CostTracker._strip_model_prefix(
         "openrouter/anthropic/claude-3.5-sonnet"
     ) == "anthropic/claude-3.5-sonnet"
@@ -151,7 +151,7 @@ def test_model_prefix_detection():
     assert CostTracker._strip_model_prefix(
         "together/meta-llama/Llama-3-8b-chat-hf"
     ) == "meta-llama/Llama-3-8b-chat-hf"
-    
+
     assert CostTracker._strip_model_prefix(
         "together/mistralai/Mixtral-8x7B-Instruct-v0.1"
     ) == "mistralai/Mixtral-8x7B-Instruct-v0.1"
@@ -160,7 +160,7 @@ def test_model_prefix_detection():
     assert CostTracker._strip_model_prefix(
         "groq/llama3-8b-8192"
     ) == "llama3-8b-8192"
-    
+
     assert CostTracker._strip_model_prefix(
         "groq/mixtral-8x7b-32768"
     ) == "mixtral-8x7b-32768"
@@ -179,7 +179,7 @@ def test_model_prefix_detection():
     assert CostTracker._strip_model_prefix(
         "gpt-4o"
     ) == "gpt-4o"
-    
+
     assert CostTracker._strip_model_prefix(
         "claude-3-5-sonnet-20241022"
     ) == "claude-3-5-sonnet-20241022"
@@ -208,7 +208,7 @@ def test_cost_tracking_with_prefixed_models():
         1000,
         500
     )
-    
+
     # Should use GPT-4o pricing despite the prefix
     expected_cost = (1000 / 1_000_000) * 2.50 + (500 / 1_000_000) * 10.00
     assert abs(tracker.breakdown.llm_cost_usd - expected_cost) < 0.0001
@@ -226,7 +226,7 @@ def test_cost_tracking_with_prefixed_models():
             800,
             400
         )
-    
+
     # Should extract claude-3-5-sonnet-20241022 and use its pricing
     expected_cost = (800 / 1_000_000) * 3.00 + (400 / 1_000_000) * 15.00
     assert abs(tracker.breakdown.llm_cost_usd - expected_cost) < 0.0001
@@ -336,6 +336,7 @@ def test_pr_reviewer_with_prefixed_models():
 def test_cli_with_prefixed_models():
     """Test CLI handles prefixed model names correctly."""
     from typer.testing import CliRunner
+
     from kit.cli import app
 
     runner = CliRunner()
@@ -362,21 +363,21 @@ def test_complex_prefixed_model_names():
     # Test deeply nested model names
     complex_models = [
         (
-            "fireworks/accounts/fireworks/models/llama-v3p1-8b-instruct", 
+            "fireworks/accounts/fireworks/models/llama-v3p1-8b-instruct",
             "accounts/fireworks/models/llama-v3p1-8b-instruct"
         ),
         (
-            "replicate/meta/llama-2-70b-chat:13c3cdee13ee059ab779f0291d29054dab00a47dad8261375654de5540165fb0",  # noqa: E501
+            "replicate/meta/llama-2-70b-chat:13c3cdee13ee059ab779f0291d29054dab00a47dad8261375654de5540165fb0",
             "meta/llama-2-70b-chat:13c3cdee13ee059ab779f0291d29054dab00a47dad8261375654de5540165fb0"
         ),
         # This one won't be stripped because "provider" is not in prefixes_to_strip
         (
-            "provider/org/team/model/version/variant", 
+            "provider/org/team/model/version/variant",
             "provider/org/team/model/version/variant"
         ),
         # This one won't be stripped because "a" is not in prefixes_to_strip
         (
-            "a/b/c/d/e/f/g", 
+            "a/b/c/d/e/f/g",
             "a/b/c/d/e/f/g"
         ),
     ]
@@ -394,7 +395,7 @@ def test_provider_prefix_detection():
     # Test known provider prefixes that are actually in prefixes_to_strip
     known_providers = [
         "openrouter",
-        "together", 
+        "together",
         "groq",
         "fireworks",
         "replicate",
@@ -445,7 +446,7 @@ def test_cost_tracking_edge_cases_with_prefixes():
 
         # Should warn about unknown pricing
         mock_print.assert_called()
-        
+
         # Should use fallback pricing
         expected_cost = (1000 / 1_000_000) * 3.0 + (500 / 1_000_000) * 15.0
         assert abs(tracker.breakdown.llm_cost_usd - expected_cost) < 0.0001
@@ -647,7 +648,7 @@ def test_config_custom_openai_provider():
 
     try:
         config = ReviewConfig.from_file(config_path)
-        
+
         assert config.llm.provider == LLMProvider.OPENAI
         assert config.llm.api_key == "together_api_key"
         assert config.llm.api_base_url == "https://api.together.xyz/v1"

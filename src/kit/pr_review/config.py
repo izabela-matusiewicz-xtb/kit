@@ -28,11 +28,11 @@ class ReviewDepth(Enum):
 def _detect_provider_from_model(model_name: str) -> Optional[LLMProvider]:
     """Detect LLM provider from model name."""
     model_lower = model_name.lower()
-    
+
     # Strip common prefixes first
     prefixes_to_strip = [
         "vertex_ai/",
-        "openrouter/", 
+        "openrouter/",
         "together/",
         "groq/",
         "fireworks/",
@@ -41,7 +41,7 @@ def _detect_provider_from_model(model_name: str) -> Optional[LLMProvider]:
         "bedrock/",
         "azure/",
     ]
-    
+
     stripped_model = model_lower
     for prefix in prefixes_to_strip:
         if stripped_model.startswith(prefix):
@@ -319,7 +319,7 @@ class ReviewConfig:
 #   temperature: 0.1
 
 # Example OpenAI compatible provider configurations:
-# 
+#
 # Together AI (https://together.ai/):
 # llm:
 #   provider: openai
