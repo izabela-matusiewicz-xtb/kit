@@ -61,7 +61,7 @@ class PRReviewer:
 
         # Parse GitHub URL
         # https://github.com/owner/repo/pull/123
-        url_pattern = r"https://github\.com/([^/]+)/([^/]+)/pull/(\d+)"
+        url_pattern = r"https://(?:\w+\.)?github\.com/([^/]+)/([^/]+)/pull/(\d+)"
         match = re.match(url_pattern, pr_input)
 
         if not match:
@@ -309,10 +309,21 @@ class PRReviewer:
         try:
             import openai
         except ImportError:
-            raise RuntimeError("openai package not installed. Run: pip install openai")
+            raise RuntimeError(
+                "openai package not installed. Run: pip install openai"
+            )
 
         if not self._llm_client:
-            self._llm_client = openai.OpenAI(api_key=self.config.llm.api_key)
+            # Support custom OpenAI compatible providers via api_base_url
+            if self.config.llm.api_base_url:
+                self._llm_client = openai.OpenAI(
+                    api_key=self.config.llm.api_key,
+                    base_url=self.config.llm.api_base_url
+                )
+            else:
+                self._llm_client = openai.OpenAI(
+                    api_key=self.config.llm.api_key
+                )
 
         try:
             response = self._llm_client.chat.completions.create(
@@ -323,9 +334,14 @@ class PRReviewer:
             )
 
             # Track cost
-            input_tokens, output_tokens = self.cost_tracker.extract_openai_usage(response)
+            input_tokens, output_tokens = self.cost_tracker.extract_openai_usage(
+                response
+            )
             self.cost_tracker.track_llm_usage(
-                self.config.llm.provider, self.config.llm.model, input_tokens, output_tokens
+                self.config.llm.provider,
+                self.config.llm.model,
+                input_tokens,
+                output_tokens
             )
 
             content = response.choices[0].message.content

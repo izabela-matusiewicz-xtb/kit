@@ -160,6 +160,30 @@ You need a GitHub token with appropriate permissions:
 2. Format: `sk-xxxxxxxxxxxxxxxxx`
 3. Set: `export KIT_OPENAI_TOKEN="your_key"`
 
+#### Custom OpenAI Compatible Providers
+
+Kit supports any OpenAI compatible API provider by setting a custom `api_base_url`. Popular options include:
+
+**Together AI** (Cost-effective, fast inference)
+```bash
+export KIT_OPENAI_TOKEN="your_together_api_key"
+```
+
+**OpenRouter** (Access to many models via one API)
+```bash  
+export KIT_OPENAI_TOKEN="your_openrouter_api_key"
+```
+
+**Groq** (Ultra-fast inference)
+```bash
+export KIT_OPENAI_TOKEN="your_groq_api_key"
+```
+
+**Local OpenAI API Server** (e.g., text-generation-webui, vLLM)
+```bash
+export KIT_OPENAI_TOKEN="not-used"  # Local servers often don't need API keys
+```
+
 ### 3. Configuration
 
 #### Quick Setup
@@ -203,6 +227,52 @@ custom_pricing:
     gpt-4o:
       input_per_million: 2.50  
       output_per_million: 10.00
+```
+
+#### Custom OpenAI Compatible Provider Examples
+
+**Together AI Configuration:**
+```yaml
+llm:
+  provider: openai
+  model: "meta-llama/Llama-3.3-70B-Instruct-Turbo"
+  api_key: "your_together_api_key"
+  api_base_url: "https://api.together.xyz/v1"
+  max_tokens: 4000
+  temperature: 0.1
+```
+
+**OpenRouter Configuration:**
+```yaml
+llm:
+  provider: openai
+  model: "anthropic/claude-3.5-sonnet"
+  api_key: "your_openrouter_api_key" 
+  api_base_url: "https://openrouter.ai/api/v1"
+  max_tokens: 4000
+  temperature: 0.1
+```
+
+**Groq Configuration:**
+```yaml
+llm:
+  provider: openai
+  model: "llama-3.3-70b-versatile"
+  api_key: "your_groq_api_key"
+  api_base_url: "https://api.groq.com/openai/v1"
+  max_tokens: 4000
+  temperature: 0.1
+```
+
+**Local OpenAI API Server Configuration:**
+```yaml
+llm:
+  provider: openai
+  model: "local-model-name"
+  api_key: "not-used"  # Local servers often don't require API keys
+  api_base_url: "http://localhost:8000/v1"
+  max_tokens: 4000
+  temperature: 0.1
 ```
 
 ## 🔧 Usage Examples
