@@ -10,6 +10,20 @@ All notable changes to Kit will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0]
+
+### 🎉 Major Features
+
+- **Custom Context Profiles**: Store and apply organization-specific coding standards and guidelines
+  - Create reusable profiles: `kit review-profile create --name company-standards`
+  - Apply to any PR: `kit review --profile company-standards <pr-url>`
+  - Export/import for team collaboration
+
+- **Priority Filtering**: Focus reviews on what matters most
+  - Filter by priority levels: `kit review --priority=high,medium <pr-url>`
+  - Reduce noise and costs by focusing on critical issues
+  - Combine with other modes for targeted workflows
+
 ## [0.6.4]
 
 ### 🎉 Major Features
