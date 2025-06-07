@@ -157,7 +157,7 @@ Based on real-world testing on production open source PRs:
 
 | Model | Typical Cost | Quality | Best For |
 |-------|------|---------|----------|
-| **qwen2.5-coder:latest** | **$0.00** | ⭐⭐⭐⭐ | **Free local AI |
+| **qwen2.5-coder:latest** | **$0.00** | ⭐⭐⭐⭐ | Free local AI |
 | **gemini-1.5-flash-8b** | **$0.003** | ⭐⭐⭐ | Ultra-budget, high volume |
 | **gpt-4.1-nano** | **$0.0015-0.004** | ⭐⭐⭐ | High-volume, ultra-budget |
 | **gpt-4.1-mini** | **$0.005-0.015** | ⭐⭐⭐⭐ | Budget-friendly, often very good for the price |
@@ -215,29 +215,6 @@ kit review --model qwen2.5-coder:latest https://github.com/owner/repo/pull/123
 - **Token Breakdown**: Understand what drives costs
 - **Model Information**: Know which AI provided the analysis
 - **No Hidden Fees**: Pay only for actual LLM usage
-
-### Priority Filtering
-
-Control which priority levels to include in reviews:
-
-```bash
-# CLI priority filtering (overrides config)
-kit review --priority=high https://github.com/owner/repo/pull/123
-kit review --priority=high,medium https://github.com/owner/repo/pull/123
-kit review --priority=low https://github.com/owner/repo/pull/123
-
-# Short flag also works
-kit review -P high,medium https://github.com/owner/repo/pull/123
-```
-
-**Available Priorities:**
-- **high**: Critical security vulnerabilities, breaking changes, data loss risks
-- **medium**: Performance issues, logic errors, architectural concerns  
-- **low**: Code style, minor optimizations, documentation improvements
-
-<Aside type="tip">
-**Use cases**: Focus security reviews on `--priority=high`, code style reviews on `--priority=low`, or general reviews on `--priority=high,medium` to reduce noise.
-</Aside>
 
 ## 📋 Custom Context Profiles
 
